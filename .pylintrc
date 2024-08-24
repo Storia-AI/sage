@@ -1,0 +1,8 @@
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+min-public-methods=1
+
+[MASTER]
+init-hook='import sys; sys.path.append(".")'

@@ -1,0 +1,14 @@
+GitPython==3.1.43
+Pygments==2.18.0
+gradio==4.42.0
+langchain==0.2.14
+langchain-community==0.2.12
+langchain-openai==0.1.22
+openai==1.42.0
+pinecone==5.0.1
+python-dotenv==1.0.1
+requests==2.32.3
+semchunk==2.2.0
+tiktoken==0.7.0
+tree-sitter==0.22.3
+tree-sitter-language-pack==0.2.0
