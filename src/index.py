@@ -21,6 +21,11 @@ MAX_CHUNKS_PER_BATCH = (
 MAX_TOKENS_PER_JOB = 3_000_000  # The OpenAI batch embedding API enforces a maximum of 3M tokens processed at once.
 
 
+def _read_extensions(path):
+    with open(path, "r") as f:
+        return {line.strip().lower() for line in f}
+
+
 def main():
     parser = argparse.ArgumentParser(description="Batch-embeds a repository")
     parser.add_argument("repo_id", help="The ID of the repository to index")
@@ -41,6 +46,12 @@ def main():
     parser.add_argument(
         "--pinecone_index_name", required=True, help="Pinecone index name"
     )
+    parser.add_argument(
+        "--include", help="Path to a file containing a list of extensions to include. One extension per line."
+    )
+    parser.add_argument(
+        "--exclude", help="Path to a file containing a list of extensions to exclude. One extension per line."
+    )
 
     args = parser.parse_args()
 
@@ -55,9 +66,19 @@ def main():
         )
     if args.tokens_per_chunk * args.chunks_per_batch >= MAX_TOKENS_PER_JOB:
         parser.error(f"The maximum number of chunks per job is {MAX_TOKENS_PER_JOB}.")
+    if args.include and args.exclude:
+        parser.error("At most one of --include and --exclude can be specified.")
+
+    included_extensions = _read_extensions(args.include) if args.include else None
+    excluded_extensions = _read_extensions(args.exclude) if args.exclude else None
 
     logging.info("Cloning the repository...")
-    repo_manager = RepoManager(args.repo_id, local_dir=args.local_dir)
+    repo_manager = RepoManager(
+        args.repo_id,
+        local_dir=args.local_dir,
+        included_extensions=included_extensions,
+        excluded_extensions=excluded_extensions,
+    )
     repo_manager.clone()
 
     logging.info("Issuing embedding jobs...")

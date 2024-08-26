@@ -86,10 +86,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI to chat with your codebase")
     parser.add_argument("repo_id", help="The ID of the repository to index")
     parser.add_argument(
-        "--openai_model", default="gpt-4", help="The OpenAI model to use for response generation"
+        "--openai_model",
+        default="gpt-4",
+        help="The OpenAI model to use for response generation",
     )
     parser.add_argument(
         "--pinecone_index_name", required=True, help="Pinecone index name"
+    )
+    parser.add_argument(
+        "--share",
+        default=False,
+        help="Whether to make the gradio app publicly accessible.",
     )
     args = parser.parse_args()
 
@@ -108,7 +115,9 @@ if __name__ == "__main__":
         answer = append_sources_to_response(response)
         return answer
 
-    gr.ChatInterface(_predict,
-                     title=args.repo_id,
-                     description=f"Code sage for your repo: {args.repo_id}",
-                     examples=["What does this repo do?", "Give me some sample code."]).launch()
+    gr.ChatInterface(
+        _predict,
+        title=args.repo_id,
+        description=f"Code sage for your repo: {args.repo_id}",
+        examples=["What does this repo do?", "Give me some sample code."],
+    ).launch(share=args.share)

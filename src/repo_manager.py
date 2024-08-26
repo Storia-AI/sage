@@ -11,7 +11,13 @@ from git import GitCommandError, Repo
 class RepoManager:
     """Class to manage a local clone of a GitHub repository."""
 
-    def __init__(self, repo_id: str, local_dir: str = None):
+    def __init__(
+        self,
+        repo_id: str,
+        local_dir: str = None,
+        included_extensions: set = None,
+        excluded_extensions: set = None,
+    ):
         """
         Args:
             repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/repo2vec".
@@ -23,11 +29,15 @@ class RepoManager:
             os.makedirs(self.local_dir)
         self.local_path = os.path.join(self.local_dir, repo_id)
         self.access_token = os.getenv("GITHUB_TOKEN")
+        self.included_extensions = included_extensions
+        self.excluded_extensions = excluded_extensions
 
     @cached_property
     def is_public(self) -> bool:
         """Checks whether a GitHub repository is publicly visible."""
-        response = requests.get(f"https://api.github.com/repos/{self.repo_id}", timeout=10)
+        response = requests.get(
+            f"https://api.github.com/repos/{self.repo_id}", timeout=10
+        )
         # Note that the response will be 404 for both private and non-existent repos.
         return response.status_code == 200
 
@@ -40,13 +50,17 @@ class RepoManager:
         if self.access_token:
             headers["Authorization"] = f"token {self.access_token}"
 
-        response = requests.get(f"https://api.github.com/repos/{self.repo_id}", headers=headers)
+        response = requests.get(
+            f"https://api.github.com/repos/{self.repo_id}", headers=headers
+        )
         if response.status_code == 200:
             branch = response.json().get("default_branch", "main")
         else:
             # This happens sometimes when we exceed the Github rate limit. The best bet in this case is to assume the
             # most common naming for the default branch ("main").
-            logging.warn(f"Unable to fetch default branch for {self.repo_id}: {response.text}")
+            logging.warn(
+                f"Unable to fetch default branch for {self.repo_id}: {response.text}"
+            )
             branch = "main"
         return branch
 
@@ -73,12 +87,20 @@ class RepoManager:
             return False
         return True
 
-    def walk(
-        self,
-        included_extensions: set = None,
-        excluded_extensions: set = None,
-        log_dir: str = None,
-    ):
+    def _should_include(self, file_path: str) -> bool:
+        """Checks whether the file should be indexed, based on the included and excluded extensions."""
+        _, extension = os.path.splitext(file_path)
+        extension = extension.lower()
+        if self.included_extensions and extension not in self.included_extensions:
+            return False
+        if self.excluded_extensions and extension in self.excluded_extensions:
+            return False
+        # Exclude hidden files and directories.
+        if any(part.startswith(".") for part in file_path.split(os.path.sep)):
+            return False
+        return True
+
+    def walk(self, log_dir: str = None):
         """Walks the local repository path and yields a tuple of (filepath, content) for each file.
         The filepath is relative to the root of the repository (e.g. "org/repo/your/file/path.py").
 
@@ -87,24 +109,6 @@ class RepoManager:
             excluded_extensions: Optional set of extensions to exclude.
             log_dir: Optional directory where to log the included and excluded files.
         """
-        # Convert included and excluded extensions to lowercase.
-        if included_extensions:
-            included_extensions = {ext.lower() for ext in included_extensions}
-        if excluded_extensions:
-            excluded_extensions = {ext.lower() for ext in excluded_extensions}
-
-        def include(file_path: str) -> bool:
-            _, extension = os.path.splitext(file_path)
-            extension = extension.lower()
-            if included_extensions and extension not in included_extensions:
-                return False
-            if excluded_extensions and extension in excluded_extensions:
-                return False
-            # Exclude hidden files and directories.
-            if any(part.startswith(".") for part in file_path.split(os.path.sep)):
-                return False
-            return True
-
         # We will keep apending to these files during the iteration, so we need to clear them first.
         if log_dir:
             repo_name = self.repo_id.replace("/", "_")
@@ -117,7 +121,7 @@ class RepoManager:
 
         for root, _, files in os.walk(self.local_path):
             file_paths = [os.path.join(root, file) for file in files]
-            included_file_paths = [f for f in file_paths if include(f)]
+            included_file_paths = [f for f in file_paths if self._should_include(f)]
 
             if log_dir:
                 with open(included_log_file, "a") as f:
@@ -136,11 +140,15 @@ class RepoManager:
                     try:
                         contents = f.read()
                     except UnicodeDecodeError:
-                        logging.warning("Unable to decode file %s. Skipping.", file_path)
+                        logging.warning(
+                            "Unable to decode file %s. Skipping.", file_path
+                        )
                         continue
                     yield file_path[len(self.local_dir) + 1 :], contents
 
     def github_link_for_file(self, file_path: str) -> str:
         """Converts a repository file path to a GitHub link."""
-        file_path = file_path[len(self.repo_id):]
-        return f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"
+        file_path = file_path[len(self.repo_id) :]
+        return (
+            f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"
+        )
