@@ -42,7 +42,7 @@ That's it.
 Here is, for example, a conversation about the repo [Storia-AI/image-eval](https://github.com/Storia-AI/image-eval):
 ![screenshot](assets/chat_screenshot.png)
 
-# Peaking under the hood
+# Peeking under the hood
 
 ## Indexing the repo
 The `src/index.py` script performs the following steps:
