@@ -1,5 +1,22 @@
-# Overview
-`repo2vec` enables you to index your codebase and chat with it by simply running two python scripts:
+# What is this?
+
+![screenshot](assets/chat_screenshot.png)
+
+*TL;DR*: `repo2vec` is a simple-to-use, modular library enabling you to chat with any public codebase.
+
+**Ok, but why chat with a codebase?**
+
+Sometimes you just want to learn how a codebase works and how to integrate it, without spending hours sifting through
+the code itself. 
+
+`repo2vec` is like Github Copilot but with the most up-to-date information about your repo. 
+
+Features: 
+- **Dead-simple set-up.** Run *two scripts* and you have a functional chat interface for your code. That's really it.
+- **Heavily documented answers.** Every response shows where in the code the context for the answer was pulled from. Let's build trust in the AI.
+- **Plug-and-play.** Want to improve the algorithms powering the code understanding/generation? We've made every component of the pipeline easily swappable. Customize to your heart's content.
+
+Here are the two scripts you need to run:
 ```
 pip install -r requirements.txt
 
@@ -11,17 +28,21 @@ export PINECONE_INDEX_NAME=...
 python src/index.py $GITHUB_REPO_NAME --pinecone_index_name=$PINECONE_INDEX_NAME
 python src/chat.py $GITHUB_REPO_NAME --pinecone_index_name=$PINECONE_INDEX_NAME
 ```
-This will index your entire codebase in a vector DB, then bring up a `gradio` app where you can ask questions about it. The assistant responses always include GitHub links to the documents retrieved for each query.
+This will index your entire codebase in a vector DB, then bring up a `gradio` app where you can ask questions about it. 
 
-To make the gradio chat app accessible publicly, you can set `--share=true`:
+The assistant responses always include GitHub links to the documents retrieved for each query.
+
+If you want to publicly host your chat experience, set `--share=true`:
 ```
 python src/chat.py $GITHUB_REPO_NAME --share=true ...
 ```
 
+That's seriously it.
+
 Here is, for example, a conversation about the repo [Storia-AI/image-eval](https://github.com/Storia-AI/image-eval):
 ![screenshot](assets/chat_screenshot.png)
 
-# Under the hood
+# Peaking under the hood
 
 ## Indexing the repo
 The `src/index.py` script performs the following steps:
