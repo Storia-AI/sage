@@ -37,7 +37,7 @@ If you want to publicly host your chat experience, set `--share=true`:
 python src/chat.py $GITHUB_REPO_NAME --share=true ...
 ```
 
-That's seriously it.
+That's it.
 
 Here is, for example, a conversation about the repo [Storia-AI/image-eval](https://github.com/Storia-AI/image-eval):
 ![screenshot](assets/chat_screenshot.png)
@@ -74,6 +74,15 @@ The `src/chat.py` brings up a [Gradio app](https://www.gradio.app/) with a chat 
 4. Calls an OpenAI LLM to respond to the user query based on the retrieved documents.
 
 The sources are conveniently surfaced in the chat and linked directly to GitHub.
+
+# Want your repository hosted?
+
+We're working to make all code on the internet searchable and understandable for devs. If you would like help hosting
+your repository, we're onboarding a handful of repos onto our infrastructure **for free**. 
+
+You'll get a dedicated url for your repo like `https://sage.storia.ai/[REPO_NAME]`. Just send us a message at [founders@storia.ai](mailto:founders@storia.ai)!
+
+![](assets/sage.gif)
 
 # Extensions & Contributions
 We built the code purposefully modular so that you can plug in your desired embeddings, LLM and vector stores providers by simply implementing the relevant abstract classes.
