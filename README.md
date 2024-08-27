@@ -2,7 +2,7 @@
 
 ![screenshot](assets/chat_screenshot.png)
 
-*TL;DR*: `repo2vec` is a simple-to-use, modular library enabling you to chat with any public codebase.
+*TL;DR*: `repo2vec` is a simple-to-use, modular library enabling you to chat with any public or private codebase.
 
 **Ok, but why chat with a codebase?**
 
