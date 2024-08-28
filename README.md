@@ -9,7 +9,7 @@
 Sometimes you just want to learn how a codebase works and how to integrate it, without spending hours sifting through
 the code itself. 
 
-`repo2vec` is like Github Copilot but with the most up-to-date information about your repo. 
+`repo2vec` is like GitHub Copilot but with the most up-to-date information about your repo. 
 
 Features: 
 - **Dead-simple set-up.** Run *two scripts* and you have a functional chat interface for your code. That's really it.
