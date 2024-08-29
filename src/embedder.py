@@ -60,12 +60,12 @@ class OpenAIBatchEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    batch = batch[i : i + chunks_per_batch]
+                    sub_batch = batch[i : i + chunks_per_batch]
                     openai_batch_id = self._issue_job_for_chunks(
-                        batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
+                        sub_batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
                     )
                     self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(
-                        batch
+                        sub_batch
                     )
                 batch = []
 
