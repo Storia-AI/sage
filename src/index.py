@@ -52,6 +52,7 @@ def main():
     )
     parser.add_argument(
         "--exclude",
+        default="src/sample-exclude.txt",
         help="Path to a file containing a list of extensions to exclude. One extension per line.",
     )
     parser.add_argument(

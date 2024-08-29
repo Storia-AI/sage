@@ -1,6 +1,7 @@
 """Chunker abstraction and implementations."""
 
 import logging
+import nbformat
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import lru_cache
@@ -172,6 +173,9 @@ class CodeChunker(Chunker):
 
     def chunk(self, file_path: str, file_content: str) -> List[Chunk]:
         """Chunks a code file into smaller pieces."""
+        if not file_content.strip():
+            return []
+
         tree = self.parse_tree(file_path, file_content)
         if tree is None:
             return []
@@ -226,6 +230,28 @@ class TextChunker(Chunker):
         return chunks
 
 
+class IPYNBChunker(Chunker):
+    """Extracts the python code from a Jupyter notebook, removing all the boilerplate.
+
+    Based on https://github.com/GoogleCloudPlatform/generative-ai/blob/main/language/code/code_retrieval_augmented_generation.ipynb
+    """
+    def __init__(self, code_chunker: CodeChunker):
+        self.code_chunker = code_chunker
+
+    def chunk(self, filename: str, content: str) -> List[Chunk]:
+        if not filename.lower().endswith(".ipynb"):
+            logging.warn("IPYNBChunker is only for .ipynb files.")
+            return []
+
+        notebook = nbformat.reads(content, as_version=nbformat.NO_CONVERT)
+        python_code = "\n".join([cell.source for cell in notebook.cells if cell.cell_type == "code"])
+        chunks = self.code_chunker.chunk(filename.replace(".ipynb", ".py"), python_code)
+        # Change back the filenames to .ipynb.
+        for chunk in chunks:
+            chunk.filename = chunk.filename.replace(".py", ".ipynb")
+        return chunks
+
+
 class UniversalChunker(Chunker):
     """Chunks a file into smaller pieces, regardless of whether it's code or text."""
 
@@ -234,6 +260,8 @@ class UniversalChunker(Chunker):
         self.text_chunker = TextChunker(max_tokens)
 
     def chunk(self, file_path: str, file_content: str) -> List[Chunk]:
+        if file_path.lower().endswith(".ipynb"):
+            return IPYNBChunker(self.code_chunker).chunk(file_path, file_content)
         if CodeChunker.is_code_file(file_path):
             return self.code_chunker.chunk(file_path, file_content)
         return self.text_chunker.chunk(file_path, file_content)
