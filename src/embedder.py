@@ -34,9 +34,7 @@ class BatchEmbedder(ABC):
 class OpenAIBatchEmbedder(BatchEmbedder):
     """Batch embedder that calls OpenAI. See https://platform.openai.com/docs/guides/batch/overview."""
 
-    def __init__(
-        self, repo_manager: RepoManager, chunker: Chunker, local_dir: str
-    ):
+    def __init__(self, repo_manager: RepoManager, chunker: Chunker, local_dir: str):
         self.repo_manager = repo_manager
         self.chunker = chunker
         self.local_dir = local_dir
@@ -44,7 +42,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         self.openai_batch_ids = {}
         self.client = OpenAI()
 
-    def embed_repo(self, chunks_per_batch: int):
+    def embed_repo(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire repository."""
         if self.openai_batch_ids:
             raise ValueError("Embeddings are in progress.")
@@ -60,24 +58,21 @@ class OpenAIBatchEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    batch = batch[i : i + chunks_per_batch]
+                    sub_batch = batch[i : i + chunks_per_batch]
                     openai_batch_id = self._issue_job_for_chunks(
-                        batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
+                        sub_batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
                     )
-                    self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(
-                        batch
-                    )
+                    self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(sub_batch)
+                    if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
+                        logging.info("Reached the maximum number of embedding jobs. Stopping.")
+                        return
                 batch = []
 
         # Finally, commit the last batch.
         if batch:
-            openai_batch_id = self._issue_job_for_chunks(
-                batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
-            )
+            openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}")
             self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(batch)
-        logging.info(
-            "Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count
-        )
+        logging.info("Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count)
 
         # Save the job IDs to a file, just in case this script is terminated by mistake.
         metadata_file = os.path.join(self.local_dir, "openai_batch_ids.json")
@@ -149,9 +144,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 metadata={},
             )
         except Exception as e:
-            print(
-                f"Failed to create batch job with input_file_id={input_file_id}. Error: {e}"
-            )
+            print(f"Failed to create batch job with input_file_id={input_file_id}. Error: {e}")
             return None
 
     @staticmethod

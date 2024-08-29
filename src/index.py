@@ -47,10 +47,17 @@ def main():
         "--pinecone_index_name", required=True, help="Pinecone index name"
     )
     parser.add_argument(
-        "--include", help="Path to a file containing a list of extensions to include. One extension per line."
+        "--include",
+        help="Path to a file containing a list of extensions to include. One extension per line.",
     )
     parser.add_argument(
-        "--exclude", help="Path to a file containing a list of extensions to exclude. One extension per line."
+        "--exclude",
+        help="Path to a file containing a list of extensions to exclude. One extension per line.",
+    )
+    parser.add_argument(
+        "--max_embedding_jobs", type=int,
+        help="Maximum number of embedding jobs to run. Specifying this might result in "
+        "indexing only part of the repository, but prevents you from burning through OpenAI credits.",
     )
 
     args = parser.parse_args()
@@ -84,7 +91,7 @@ def main():
     logging.info("Issuing embedding jobs...")
     chunker = UniversalChunker(max_tokens=args.tokens_per_chunk)
     embedder = OpenAIBatchEmbedder(repo_manager, chunker, args.local_dir)
-    embedder.embed_repo(args.chunks_per_batch)
+    embedder.embed_repo(args.chunks_per_batch, args.max_embedding_jobs)
 
     logging.info("Waiting for embeddings to be ready...")
     while not embedder.embeddings_are_ready():
