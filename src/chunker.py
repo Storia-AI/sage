@@ -132,6 +132,8 @@ class CodeChunker(Chunker):
                     merged_chunks[-1] = merged
                 else:
                     merged_chunks.append(chunk)
+            else:
+                merged_chunks.append(chunk)
         chunks = merged_chunks
 
         for chunk in merged_chunks:
