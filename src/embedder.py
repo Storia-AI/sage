@@ -34,9 +34,7 @@ class BatchEmbedder(ABC):
 class OpenAIBatchEmbedder(BatchEmbedder):
     """Batch embedder that calls OpenAI. See https://platform.openai.com/docs/guides/batch/overview."""
 
-    def __init__(
-        self, repo_manager: RepoManager, chunker: Chunker, local_dir: str
-    ):
+    def __init__(self, repo_manager: RepoManager, chunker: Chunker, local_dir: str):
         self.repo_manager = repo_manager
         self.chunker = chunker
         self.local_dir = local_dir
@@ -44,7 +42,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         self.openai_batch_ids = {}
         self.client = OpenAI()
 
-    def embed_repo(self, chunks_per_batch: int):
+    def embed_repo(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire repository."""
         if self.openai_batch_ids:
             raise ValueError("Embeddings are in progress.")
@@ -67,6 +65,14 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                     self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(
                         sub_batch
                     )
+                    if (
+                        max_embedding_jobs
+                        and len(self.openai_batch_ids) >= max_embedding_jobs
+                    ):
+                        logging.info(
+                            "Reached the maximum number of embedding jobs. Stopping."
+                        )
+                        return
                 batch = []
 
         # Finally, commit the last batch.
@@ -133,7 +139,9 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         OpenAIBatchEmbedder._export_to_jsonl([request], input_file)
 
         # Uplaod the file and issue the embedding job.
-        batch_input_file = self.client.files.create(file=open(input_file, "rb"), purpose="batch")
+        batch_input_file = self.client.files.create(
+            file=open(input_file, "rb"), purpose="batch"
+        )
         batch_status = self._create_batch_job(batch_input_file.id)
         logging.info("Created job with ID %s", batch_status.id)
         return batch_status.id
