@@ -89,6 +89,8 @@ class RepoManager:
 
     def _should_include(self, file_path: str) -> bool:
         """Checks whether the file should be indexed, based on the included and excluded extensions."""
+        if os.path.islink(file_path):
+            return False
         _, extension = os.path.splitext(file_path)
         extension = extension.lower()
         if self.included_extensions and extension not in self.included_extensions:
