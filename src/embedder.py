@@ -62,28 +62,17 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                     openai_batch_id = self._issue_job_for_chunks(
                         sub_batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
                     )
-                    self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(
-                        sub_batch
-                    )
-                    if (
-                        max_embedding_jobs
-                        and len(self.openai_batch_ids) >= max_embedding_jobs
-                    ):
-                        logging.info(
-                            "Reached the maximum number of embedding jobs. Stopping."
-                        )
+                    self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(sub_batch)
+                    if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
+                        logging.info("Reached the maximum number of embedding jobs. Stopping.")
                         return
                 batch = []
 
         # Finally, commit the last batch.
         if batch:
-            openai_batch_id = self._issue_job_for_chunks(
-                batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
-            )
+            openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}")
             self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(batch)
-        logging.info(
-            "Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count
-        )
+        logging.info("Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count)
 
         # Save the job IDs to a file, just in case this script is terminated by mistake.
         metadata_file = os.path.join(self.local_dir, "openai_batch_ids.json")
@@ -139,9 +128,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         OpenAIBatchEmbedder._export_to_jsonl([request], input_file)
 
         # Uplaod the file and issue the embedding job.
-        batch_input_file = self.client.files.create(
-            file=open(input_file, "rb"), purpose="batch"
-        )
+        batch_input_file = self.client.files.create(file=open(input_file, "rb"), purpose="batch")
         batch_status = self._create_batch_job(batch_input_file.id)
         logging.info("Created job with ID %s", batch_status.id)
         return batch_status.id
@@ -157,9 +144,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 metadata={},
             )
         except Exception as e:
-            print(
-                f"Failed to create batch job with input_file_id={input_file_id}. Error: {e}"
-            )
+            print(f"Failed to create batch job with input_file_id={input_file_id}. Error: {e}")
             return None
 
     @staticmethod
