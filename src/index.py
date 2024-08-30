@@ -5,7 +5,7 @@ import logging
 import time
 
 from chunker import UniversalChunker
-from embedder import OpenAIBatchEmbedder
+from embedder import OpenAIBatchEmbedder, MarqoEmbedder
 from repo_manager import RepoManager
 from vector_store import PineconeVectorStore
 
@@ -29,6 +29,8 @@ def _read_extensions(path):
 def main():
     parser = argparse.ArgumentParser(description="Batch-embeds a repository")
     parser.add_argument("repo_id", help="The ID of the repository to index")
+    parser.add_argument("--embedder_type", default="openai", choices=["openai", "marqo"])
+    parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
     parser.add_argument(
         "--local_dir",
         default="repos",
@@ -44,7 +46,7 @@ def main():
         "--chunks_per_batch", type=int, default=2000, help="Maximum chunks per batch"
     )
     parser.add_argument(
-        "--pinecone_index_name", required=True, help="Pinecone index name"
+        "--index_name", required=True, help="Vector store index name"
     )
     parser.add_argument(
         "--include",
@@ -60,10 +62,25 @@ def main():
         help="Maximum number of embedding jobs to run. Specifying this might result in "
         "indexing only part of the repository, but prevents you from burning through OpenAI credits.",
     )
-
+    parser.add_argument(
+        "--marqo_url",
+        default="http://localhost:8882",
+        help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
+    )
+    parser.add_argument(
+        "--marqo_embedding_model",
+        default="hf/e5-base-v2",
+        help="The embedding model to use for Marqo.",
+    )
     args = parser.parse_args()
 
-    # Validate the arguments.
+    # Validate embedder and vector store compatibility.
+    if args.embedder_type == "openai" and args.vector_store_type != "pinecone":
+        parser.error("When using OpenAI embedder, the vector store type must be Pinecone.")
+    if args.embedder_type == "marqo" and args.vector_store_type != "marqo":
+        parser.error("When using the marqo embedder, the vector store type must also be marqo.")
+
+    # Validate other arguments.
     if args.tokens_per_chunk > MAX_TOKENS_PER_CHUNK:
         parser.error(
             f"The maximum number of tokens per chunk is {MAX_TOKENS_PER_CHUNK}."
@@ -91,8 +108,24 @@ def main():
 
     logging.info("Issuing embedding jobs...")
     chunker = UniversalChunker(max_tokens=args.tokens_per_chunk)
-    embedder = OpenAIBatchEmbedder(repo_manager, chunker, args.local_dir)
+
+    if args.embedder_type == "openai":
+        embedder = OpenAIBatchEmbedder(repo_manager, chunker, args.local_dir)
+    elif args.embedder_type == "marqo":
+        embedder = MarqoEmbedder(repo_manager,
+                                 chunker,
+                                 index_name=args.index_name,
+                                 url=args.marqo_url,
+                                 model=args.marqo_embedding_model)
+    else:
+        raise ValueError(f"Unrecognized embedder type {args.embedder_type}")
+
     embedder.embed_repo(args.chunks_per_batch, args.max_embedding_jobs)
+
+    if args.vector_store_type == "marqo":
+        # Marqo computes embeddings and stores them in the vector store at once, so we're done.
+        logging.info("Done!")
+        return
 
     logging.info("Waiting for embeddings to be ready...")
     while not embedder.embeddings_are_ready():
@@ -102,7 +135,7 @@ def main():
     logging.info("Moving embeddings to the vector store...")
     # Note to developer: Replace this with your preferred vector store.
     vector_store = PineconeVectorStore(
-        index_name=args.pinecone_index_name,
+        index_name=args.index_name,
         dimension=OPENAI_EMBEDDING_SIZE,
         namespace=repo_manager.repo_id,
     )

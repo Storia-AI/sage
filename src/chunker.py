@@ -30,6 +30,23 @@ class Chunk:
         """The text content to be embedded. Might contain information beyond just the text snippet from the file."""
         return self._content
 
+    @property
+    def to_dict(self):
+        """Converts the chunk to a dictionary that can be passed to a vector store."""
+        # Some vector stores require the IDs to be ASCII.
+        filename_ascii = self.filename.encode("ascii", "ignore").decode("ascii")
+        return {
+            # Some vector stores require the IDs to be ASCII.
+            "id": f"{filename_ascii}_{self.start_byte}_{self.end_byte}",
+            "filename": self.filename,
+            "start_byte": self.start_byte,
+            "end_byte": self.end_byte,
+            # Note to developer: When choosing a large chunk size, you might exceed the vector store's metadata
+            # size limit. In that case, you can simply store the start/end bytes above, and fetch the content
+            # directly from the repository when needed.
+            "text": self.content,
+        }
+
     def populate_content(self, file_content: str):
         """Populates the content of the chunk with the file path and file content."""
         self._content = (

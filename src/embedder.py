@@ -11,6 +11,7 @@ from openai import OpenAI
 
 from chunker import Chunk, Chunker
 from repo_manager import RepoManager
+import marqo
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
@@ -19,7 +20,7 @@ class BatchEmbedder(ABC):
     """Abstract class for batch embedding of a repository."""
 
     @abstractmethod
-    def embed_repo(self, chunks_per_batch: int):
+    def embed_repo(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire repository."""
 
     @abstractmethod
@@ -62,7 +63,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                     openai_batch_id = self._issue_job_for_chunks(
                         sub_batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
                     )
-                    self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(sub_batch)
+                    self.openai_batch_ids[openai_batch_id] = [chunk.to_dict for chunk in sub_batch]
                     if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
                         logging.info("Reached the maximum number of embedding jobs. Stopping.")
                         return
@@ -71,7 +72,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         # Finally, commit the last batch.
         if batch:
             openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}")
-            self.openai_batch_ids[openai_batch_id] = self._metadata_for_chunks(batch)
+            self.openai_batch_ids[openai_batch_id] = [chunk.to_dict for chunk in batch]
         logging.info("Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count)
 
         # Save the job IDs to a file, just in case this script is terminated by mistake.
@@ -171,22 +172,70 @@ class OpenAIBatchEmbedder(BatchEmbedder):
             },
         }
 
-    @staticmethod
-    def _metadata_for_chunks(chunks):
-        metadata = []
-        for chunk in chunks:
-            filename_ascii = chunk.filename.encode("ascii", "ignore").decode("ascii")
-            metadata.append(
-                {
-                    # Some vector stores require the IDs to be ASCII.
-                    "id": f"{filename_ascii}_{chunk.start_byte}_{chunk.end_byte}",
-                    "filename": chunk.filename,
-                    "start_byte": chunk.start_byte,
-                    "end_byte": chunk.end_byte,
-                    # Note to developer: When choosing a large chunk size, you might exceed the vector store's metadata
-                    # size limit. In that case, you can simply store the start/end bytes above, and fetch the content
-                    # directly from the repository when needed.
-                    "text": chunk.content,
-                }
+
+class MarqoEmbedder(BatchEmbedder):
+    """Embedder that uses the open-source Marqo vector search engine.
+
+    Embeddings can be stored locally (in which case `url` the constructor should point to localhost) or in the cloud.
+    """
+
+    def __init__(self,
+                 repo_manager: RepoManager,
+                 chunker: Chunker,
+                 index_name: str,
+                 url: str,
+                 model="hf/e5-base-v2"):
+        self.repo_manager = repo_manager
+        self.chunker = chunker
+        self.client = marqo.Client(url=url)
+        self.index = self.client.index(index_name)
+
+        all_index_names = [result["indexName"] for result in self.client.get_indexes()["results"]]
+        if not index_name in all_index_names:
+            self.client.create_index(index_name, model=model)
+
+    def embed_repo(self, chunks_per_batch: int, max_embedding_jobs: int = None):
+        """Issues batch embedding jobs for the entire repository."""
+        if chunks_per_batch > 64:
+            raise ValueError("Marqo enforces a limit of 64 chunks per batch.")
+
+        chunk_count = 0
+        batch = []
+
+        for filepath, content in self.repo_manager.walk():
+            chunks = self.chunker.chunk(filepath, content)
+            chunk_count += len(chunks)
+            batch.extend(chunks)
+
+            if len(batch) > chunks_per_batch:
+                for i in range(0, len(batch), chunks_per_batch):
+                    sub_batch = batch[i : i + chunks_per_batch]
+                    logging.info("Indexing %d chunks...", len(sub_batch))
+                    self.index.add_documents(
+                        documents=[chunk.to_dict for chunk in sub_batch],
+                        tensor_fields=["text"]
+                    )
+
+                    if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
+                        logging.info("Reached the maximum number of embedding jobs. Stopping.")
+                        return
+                batch = []
+
+        # Finally, commit the last batch.
+        if batch:
+            self.index.add_documents(
+                documents=[chunk.to_dict for chunk in batch],
+                tensor_fields=["text"]
             )
-        return metadata
+        logging.info(f"Successfully embedded {chunk_count} chunks.")
+
+    def embeddings_are_ready(self) -> bool:
+        """Checks whether the batch embedding jobs are done."""
+        # Marqo indexes documents synchronously, so once embed_repo() returns, the embeddings are ready.
+        return True
+
+    def download_embeddings(self) -> Generator[Vector, None, None]:
+        """Yields (chunk_metadata, embedding) pairs for each chunk in the repository."""
+        # Marqo stores embeddings as they are created, so they're already in the vector store. No need to download them
+        # as we would with e.g. OpenAI, Cohere, or some other cloud-based embedding service.
+        return []

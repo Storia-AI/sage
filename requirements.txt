@@ -4,6 +4,7 @@ gradio==4.42.0
 langchain==0.2.14
 langchain-community==0.2.12
 langchain-openai==0.1.22
+marqo==3.7.0
 nbformat==5.10.4
 openai==1.42.0
 pinecone==5.0.1
