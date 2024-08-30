@@ -10,6 +10,7 @@ Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
 class VectorStore(ABC):
     """Abstract class for a vector store."""
+
     @abstractmethod
     def ensure_exists(self):
         """Ensures that the vector store exists. Creates it if it doesn't."""
@@ -42,13 +43,10 @@ class PineconeVectorStore(VectorStore):
 
     def ensure_exists(self):
         if self.index_name not in self.client.list_indexes().names():
-            self.client.create_index(
-                name=self.index_name, dimension=self.dimension, metric="cosine"
-            )
+            self.client.create_index(name=self.index_name, dimension=self.dimension, metric="cosine")
 
     def upsert_batch(self, vectors: List[Vector]):
         pinecone_vectors = [
-            (metadata.get("id", str(i)), embedding, metadata)
-            for i, (metadata, embedding) in enumerate(vectors)
+            (metadata.get("id", str(i)), embedding, metadata) for i, (metadata, embedding) in enumerate(vectors)
         ]
         self.index.upsert(vectors=pinecone_vectors, namespace=self.namespace)

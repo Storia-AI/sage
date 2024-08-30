@@ -4,14 +4,17 @@ You must run main.py first in order to index the codebase into a vector store.
 """
 
 import argparse
-
-from dotenv import load_dotenv
+from typing import List
 
 import gradio as gr
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+import marqo
+from dotenv import load_dotenv
+from langchain.chains import (create_history_aware_retriever,
+                              create_retrieval_chain)
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
-from langchain_community.vectorstores import Pinecone
+from langchain_community.vectorstores import Marqo, Pinecone
+from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
@@ -24,10 +27,29 @@ def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = ChatOpenAI(model=args.openai_model)
 
-    vectorstore = Pinecone.from_existing_index(
-        index_name=args.pinecone_index_name,
-        embedding=OpenAIEmbeddings(),
-        namespace=args.repo_id,
+    if args.vector_store_type == "pinecone":
+        vectorstore = Pinecone.from_existing_index(
+            index_name=args.pinecone_index_name,
+            embedding=OpenAIEmbeddings(),
+            namespace=args.repo_id,
+        )
+    elif args.vector_store_type == "marqo":
+        marqo_client = marqo.Client(url=args.marqo_url)
+        vectorstore = Marqo(
+            client=marqo_client,
+            index_name=args.index_name,
+        )
+
+    # Monkey-patch the _construct_documents_from_results_without_score method to not expect a "metadata" field in the
+    # result, and instead take the "filename" directly from the result.
+    def patched_method(self, results):
+        documents: List[Document] = []
+        for res in results["hits"]:
+            documents.append(Document(page_content=res["text"], metadata={"filename": res["filename"]}))
+        return documents
+
+    vectorstore._construct_documents_from_results_without_score = patched_method.__get__(
+        vectorstore, vectorstore.__class__
     )
 
     retriever = vectorstore.as_retriever()
@@ -45,9 +67,7 @@ def build_rag_chain(args):
             ("human", "{input}"),
         ]
     )
-    history_aware_retriever = create_history_aware_retriever(
-        llm, retriever, contextualize_q_prompt
-    )
+    history_aware_retriever = create_history_aware_retriever(llm, retriever, contextualize_q_prompt)
 
     qa_system_prompt = (
         f"You are my coding buddy, helping me quickly understand a GitHub repository called {args.repo_id}."
@@ -76,9 +96,7 @@ def append_sources_to_response(response):
     # Deduplicate filenames while preserving their order.
     filenames = list(dict.fromkeys(filenames))
     repo_manager = RepoManager(args.repo_id)
-    github_links = [
-        repo_manager.github_link_for_file(filename) for filename in filenames
-    ]
+    github_links = [repo_manager.github_link_for_file(filename) for filename in filenames]
     return response["answer"] + "\n\nSources:\n" + "\n".join(github_links)
 
 
@@ -90,8 +108,12 @@ if __name__ == "__main__":
         default="gpt-4",
         help="The OpenAI model to use for response generation",
     )
+    parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
+    parser.add_argument("--index_name", required=True, help="Vector store index name")
     parser.add_argument(
-        "--pinecone_index_name", required=True, help="Pinecone index name"
+        "--marqo_url",
+        default="http://localhost:8882",
+        help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
     parser.add_argument(
         "--share",
@@ -109,9 +131,7 @@ if __name__ == "__main__":
             history_langchain_format.append(HumanMessage(content=human))
             history_langchain_format.append(AIMessage(content=ai))
         history_langchain_format.append(HumanMessage(content=message))
-        response = rag_chain.invoke(
-            {"input": message, "chat_history": history_langchain_format}
-        )
+        response = rag_chain.invoke({"input": message, "chat_history": history_langchain_format})
         answer = append_sources_to_response(response)
         return answer
 

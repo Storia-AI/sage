@@ -7,11 +7,11 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from typing import Dict, Generator, List, Tuple
 
+import marqo
 from openai import OpenAI
 
 from chunker import Chunk, Chunker
 from repo_manager import RepoManager
-import marqo
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
@@ -63,7 +63,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                     openai_batch_id = self._issue_job_for_chunks(
                         sub_batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
                     )
-                    self.openai_batch_ids[openai_batch_id] = [chunk.to_dict for chunk in sub_batch]
+                    self.openai_batch_ids[openai_batch_id] = [chunk.to_metadata for chunk in sub_batch]
                     if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
                         logging.info("Reached the maximum number of embedding jobs. Stopping.")
                         return
@@ -72,7 +72,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         # Finally, commit the last batch.
         if batch:
             openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}")
-            self.openai_batch_ids[openai_batch_id] = [chunk.to_dict for chunk in batch]
+            self.openai_batch_ids[openai_batch_id] = [chunk.to_metadata for chunk in batch]
         logging.info("Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count)
 
         # Save the job IDs to a file, just in case this script is terminated by mistake.
@@ -179,12 +179,7 @@ class MarqoEmbedder(BatchEmbedder):
     Embeddings can be stored locally (in which case `url` the constructor should point to localhost) or in the cloud.
     """
 
-    def __init__(self,
-                 repo_manager: RepoManager,
-                 chunker: Chunker,
-                 index_name: str,
-                 url: str,
-                 model="hf/e5-base-v2"):
+    def __init__(self, repo_manager: RepoManager, chunker: Chunker, index_name: str, url: str, model="hf/e5-base-v2"):
         self.repo_manager = repo_manager
         self.chunker = chunker
         self.client = marqo.Client(url=url)
@@ -212,8 +207,8 @@ class MarqoEmbedder(BatchEmbedder):
                     sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Indexing %d chunks...", len(sub_batch))
                     self.index.add_documents(
-                        documents=[chunk.to_dict for chunk in sub_batch],
-                        tensor_fields=["text"]
+                        documents=[chunk.to_metadata for chunk in sub_batch],
+                        tensor_fields=["text"],
                     )
 
                     if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
@@ -223,10 +218,7 @@ class MarqoEmbedder(BatchEmbedder):
 
         # Finally, commit the last batch.
         if batch:
-            self.index.add_documents(
-                documents=[chunk.to_dict for chunk in batch],
-                tensor_fields=["text"]
-            )
+            self.index.add_documents(documents=[chunk.to_metadata for chunk in batch], tensor_fields=["text"])
         logging.info(f"Successfully embedded {chunk_count} chunks.")
 
     def embeddings_are_ready(self) -> bool:
