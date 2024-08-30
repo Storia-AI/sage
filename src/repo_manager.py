@@ -35,9 +35,7 @@ class RepoManager:
     @cached_property
     def is_public(self) -> bool:
         """Checks whether a GitHub repository is publicly visible."""
-        response = requests.get(
-            f"https://api.github.com/repos/{self.repo_id}", timeout=10
-        )
+        response = requests.get(f"https://api.github.com/repos/{self.repo_id}", timeout=10)
         # Note that the response will be 404 for both private and non-existent repos.
         return response.status_code == 200
 
@@ -50,17 +48,13 @@ class RepoManager:
         if self.access_token:
             headers["Authorization"] = f"token {self.access_token}"
 
-        response = requests.get(
-            f"https://api.github.com/repos/{self.repo_id}", headers=headers
-        )
+        response = requests.get(f"https://api.github.com/repos/{self.repo_id}", headers=headers)
         if response.status_code == 200:
             branch = response.json().get("default_branch", "main")
         else:
             # This happens sometimes when we exceed the Github rate limit. The best bet in this case is to assume the
             # most common naming for the default branch ("main").
-            logging.warn(
-                f"Unable to fetch default branch for {self.repo_id}: {response.text}"
-            )
+            logging.warn(f"Unable to fetch default branch for {self.repo_id}: {response.text}")
             branch = "main"
         return branch
 
@@ -81,9 +75,7 @@ class RepoManager:
         try:
             Repo.clone_from(clone_url, self.local_path, depth=1, single_branch=True)
         except GitCommandError as e:
-            logging.error(
-                "Unable to clone %s from %s. Error: %s", self.repo_id, clone_url, e
-            )
+            logging.error("Unable to clone %s from %s. Error: %s", self.repo_id, clone_url, e)
             return False
         return True
 
@@ -130,9 +122,7 @@ class RepoManager:
                     for path in included_file_paths:
                         f.write(path + "\n")
 
-                excluded_file_paths = set(file_paths).difference(
-                    set(included_file_paths)
-                )
+                excluded_file_paths = set(file_paths).difference(set(included_file_paths))
                 with open(excluded_log_file, "a") as f:
                     for path in excluded_file_paths:
                         f.write(path + "\n")
@@ -142,15 +132,11 @@ class RepoManager:
                     try:
                         contents = f.read()
                     except UnicodeDecodeError:
-                        logging.warning(
-                            "Unable to decode file %s. Skipping.", file_path
-                        )
+                        logging.warning("Unable to decode file %s. Skipping.", file_path)
                         continue
                     yield file_path[len(self.local_dir) + 1 :], contents
 
     def github_link_for_file(self, file_path: str) -> str:
         """Converts a repository file path to a GitHub link."""
         file_path = file_path[len(self.repo_id) :]
-        return (
-            f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"
-        )
+        return f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"

@@ -5,16 +5,16 @@ You must run main.py first in order to index the codebase into a vector store.
 
 import argparse
 
-from dotenv import load_dotenv
-
 import gradio as gr
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from dotenv import load_dotenv
+from langchain.chains import (create_history_aware_retriever,
+                              create_retrieval_chain)
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
-from langchain_community.vectorstores import Pinecone
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
 
+import vector_store
 from repo_manager import RepoManager
 
 load_dotenv()
@@ -23,14 +23,7 @@ load_dotenv()
 def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = ChatOpenAI(model=args.openai_model)
-
-    vectorstore = Pinecone.from_existing_index(
-        index_name=args.pinecone_index_name,
-        embedding=OpenAIEmbeddings(),
-        namespace=args.repo_id,
-    )
-
-    retriever = vectorstore.as_retriever()
+    retriever = vector_store.build_from_args(args).to_langchain().as_retriever()
 
     # Prompt to contextualize the latest query based on the chat history.
     contextualize_q_system_prompt = (
@@ -45,9 +38,7 @@ def build_rag_chain(args):
             ("human", "{input}"),
         ]
     )
-    history_aware_retriever = create_history_aware_retriever(
-        llm, retriever, contextualize_q_prompt
-    )
+    history_aware_retriever = create_history_aware_retriever(llm, retriever, contextualize_q_prompt)
 
     qa_system_prompt = (
         f"You are my coding buddy, helping me quickly understand a GitHub repository called {args.repo_id}."
@@ -76,9 +67,7 @@ def append_sources_to_response(response):
     # Deduplicate filenames while preserving their order.
     filenames = list(dict.fromkeys(filenames))
     repo_manager = RepoManager(args.repo_id)
-    github_links = [
-        repo_manager.github_link_for_file(filename) for filename in filenames
-    ]
+    github_links = [repo_manager.github_link_for_file(filename) for filename in filenames]
     return response["answer"] + "\n\nSources:\n" + "\n".join(github_links)
 
 
@@ -90,8 +79,12 @@ if __name__ == "__main__":
         default="gpt-4",
         help="The OpenAI model to use for response generation",
     )
+    parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
+    parser.add_argument("--index_name", required=True, help="Vector store index name")
     parser.add_argument(
-        "--pinecone_index_name", required=True, help="Pinecone index name"
+        "--marqo_url",
+        default="http://localhost:8882",
+        help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
     parser.add_argument(
         "--share",
@@ -109,9 +102,7 @@ if __name__ == "__main__":
             history_langchain_format.append(HumanMessage(content=human))
             history_langchain_format.append(AIMessage(content=ai))
         history_langchain_format.append(HumanMessage(content=message))
-        response = rag_chain.invoke(
-            {"input": message, "chat_history": history_langchain_format}
-        )
+        response = rag_chain.invoke({"input": message, "chat_history": history_langchain_format})
         answer = append_sources_to_response(response)
         return answer
 

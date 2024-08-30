@@ -1,12 +1,12 @@
 """Chunker abstraction and implementations."""
 
 import logging
-import nbformat
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, Optional
 
+import nbformat
 import pygments
 import tiktoken
 from semchunk import chunk as chunk_via_semchunk
@@ -30,11 +30,26 @@ class Chunk:
         """The text content to be embedded. Might contain information beyond just the text snippet from the file."""
         return self._content
 
+    @property
+    def to_metadata(self):
+        """Converts the chunk to a dictionary that can be passed to a vector store."""
+        # Some vector stores require the IDs to be ASCII.
+        filename_ascii = self.filename.encode("ascii", "ignore").decode("ascii")
+        return {
+            # Some vector stores require the IDs to be ASCII.
+            "id": f"{filename_ascii}_{self.start_byte}_{self.end_byte}",
+            "filename": self.filename,
+            "start_byte": self.start_byte,
+            "end_byte": self.end_byte,
+            # Note to developer: When choosing a large chunk size, you might exceed the vector store's metadata
+            # size limit. In that case, you can simply store the start/end bytes above, and fetch the content
+            # directly from the repository when needed.
+            "text": self.content,
+        }
+
     def populate_content(self, file_content: str):
         """Populates the content of the chunk with the file path and file content."""
-        self._content = (
-            self.filename + "\n\n" + file_content[self.start_byte : self.end_byte]
-        )
+        self._content = self.filename + "\n\n" + file_content[self.start_byte : self.end_byte]
 
     def num_tokens(self, tokenizer):
         """Counts the number of tokens in the chunk."""
@@ -98,9 +113,7 @@ class CodeChunker(Chunker):
 
         if not node.children:
             # This is a leaf node, but it's too long. We'll have to split it with a text tokenizer.
-            return self.text_chunker.chunk(
-                filename, file_content[node.start_byte : node.end_byte]
-            )
+            return self.text_chunker.chunk(filename, file_content[node.start_byte : node.end_byte])
 
         chunks = []
         for child in node.children:
@@ -116,11 +129,7 @@ class CodeChunker(Chunker):
         for chunk in chunks:
             if not merged_chunks:
                 merged_chunks.append(chunk)
-            elif (
-                merged_chunks[-1].num_tokens(self.tokenizer)
-                + chunk.num_tokens(self.tokenizer)
-                < self.max_tokens - 50
-            ):
+            elif merged_chunks[-1].num_tokens(self.tokenizer) + chunk.num_tokens(self.tokenizer) < self.max_tokens - 50:
                 # There's a good chance that merging these two chunks will be under the token limit. We're not 100% sure
                 # at this point, because tokenization is not necessarily additive.
                 merged = Chunk(
@@ -186,9 +195,7 @@ class CodeChunker(Chunker):
             # a bug in the code.
             assert chunk.content
             size = chunk.num_tokens(self.tokenizer)
-            assert (
-                size <= self.max_tokens
-            ), f"Chunk size {size} exceeds max_tokens {self.max_tokens}."
+            assert size <= self.max_tokens, f"Chunk size {size} exceeds max_tokens {self.max_tokens}."
 
         return chunks
 
@@ -200,17 +207,13 @@ class TextChunker(Chunker):
         self.max_tokens = max_tokens
 
         tokenizer = tiktoken.get_encoding("cl100k_base")
-        self.count_tokens = lambda text: len(
-            tokenizer.encode(text, disallowed_special=())
-        )
+        self.count_tokens = lambda text: len(tokenizer.encode(text, disallowed_special=()))
 
     def chunk(self, file_path: str, file_content: str) -> List[Chunk]:
         """Chunks a text file into smaller pieces."""
         # We need to allocate some tokens for the filename, which is part of the chunk content.
         extra_tokens = self.count_tokens(file_path + "\n\n")
-        text_chunks = chunk_via_semchunk(
-            file_content, self.max_tokens - extra_tokens, self.count_tokens
-        )
+        text_chunks = chunk_via_semchunk(file_content, self.max_tokens - extra_tokens, self.count_tokens)
 
         chunks = []
         start = 0
@@ -235,6 +238,7 @@ class IPYNBChunker(Chunker):
 
     Based on https://github.com/GoogleCloudPlatform/generative-ai/blob/main/language/code/code_retrieval_augmented_generation.ipynb
     """
+
     def __init__(self, code_chunker: CodeChunker):
         self.code_chunker = code_chunker
 
