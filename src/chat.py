@@ -4,20 +4,17 @@ You must run main.py first in order to index the codebase into a vector store.
 """
 
 import argparse
-from typing import List
 
 import gradio as gr
-import marqo
 from dotenv import load_dotenv
 from langchain.chains import (create_history_aware_retriever,
                               create_retrieval_chain)
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
-from langchain_community.vectorstores import Marqo, Pinecone
-from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
 
+import vector_store
 from repo_manager import RepoManager
 
 load_dotenv()
@@ -26,33 +23,7 @@ load_dotenv()
 def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = ChatOpenAI(model=args.openai_model)
-
-    if args.vector_store_type == "pinecone":
-        vectorstore = Pinecone.from_existing_index(
-            index_name=args.pinecone_index_name,
-            embedding=OpenAIEmbeddings(),
-            namespace=args.repo_id,
-        )
-    elif args.vector_store_type == "marqo":
-        marqo_client = marqo.Client(url=args.marqo_url)
-        vectorstore = Marqo(
-            client=marqo_client,
-            index_name=args.index_name,
-        )
-
-    # Monkey-patch the _construct_documents_from_results_without_score method to not expect a "metadata" field in the
-    # result, and instead take the "filename" directly from the result.
-    def patched_method(self, results):
-        documents: List[Document] = []
-        for res in results["hits"]:
-            documents.append(Document(page_content=res["text"], metadata={"filename": res["filename"]}))
-        return documents
-
-    vectorstore._construct_documents_from_results_without_score = patched_method.__get__(
-        vectorstore, vectorstore.__class__
-    )
-
-    retriever = vectorstore.as_retriever()
+    retriever = vector_store.build_from_args(args).to_langchain().as_retriever()
 
     # Prompt to contextualize the latest query based on the chat history.
     contextualize_q_system_prompt = (

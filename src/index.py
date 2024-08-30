@@ -7,11 +7,10 @@ import time
 from chunker import UniversalChunker
 from embedder import MarqoEmbedder, OpenAIBatchEmbedder
 from repo_manager import RepoManager
-from vector_store import PineconeVectorStore
+from vector_store import build_from_args
 
 logging.basicConfig(level=logging.INFO)
 
-OPENAI_EMBEDDING_SIZE = 1536
 MAX_TOKENS_PER_CHUNK = 8192  # The ADA embedder from OpenAI has a maximum of 8192 tokens.
 MAX_CHUNKS_PER_BATCH = 2048  # The OpenAI batch embedding API enforces a maximum of 2048 chunks per batch.
 MAX_TOKENS_PER_JOB = 3_000_000  # The OpenAI batch embedding API enforces a maximum of 3M tokens processed at once.
@@ -129,11 +128,7 @@ def main():
 
     logging.info("Moving embeddings to the vector store...")
     # Note to developer: Replace this with your preferred vector store.
-    vector_store = PineconeVectorStore(
-        index_name=args.index_name,
-        dimension=OPENAI_EMBEDDING_SIZE,
-        namespace=repo_manager.repo_id,
-    )
+    vector_store = build_from_args(args)
     vector_store.ensure_exists()
     vector_store.upsert(embedder.download_embeddings())
     logging.info("Done!")
