@@ -40,7 +40,7 @@ We currently support two options for indexing the codebase:
         --index_name=your-index-name
     ```
 
-2. **Using external providers**: OpenAI for embeddings and [Pinecone](https://www.pinecone.io/) for the vector store. To index your codebase, run:
+2. **Using external providers** (OpenAI for embeddings and [Pinecone](https://www.pinecone.io/) for the vector store). To index your codebase, run:
     ```
     pip install -r requirements.txt
 
@@ -59,6 +59,8 @@ We currently support two options for indexing the codebase:
 To bring a `gradio` app where you can chat with your codebase, simply point it to your vector store:
 
 ```
+export OPENAI_API_KEY=...
+
 python src/chat.py \
     github-repo-name \  # e.g. Storia-AI/repo2vec
     --vector_store_type=marqo \  # or pinecone
