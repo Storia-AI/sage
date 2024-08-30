@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 
 
 def build_llm_via_langchain(provider: str, model: str):
-    """Builds a language model from the flags."""
+    """Builds a language model via LangChain."""
     if provider == "openai":
         if "OPENAI_API_KEY" not in os.environ:
             raise ValueError("Please set the OPENAI_API_KEY environment variable.")
