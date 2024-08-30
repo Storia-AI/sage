@@ -3,6 +3,8 @@ Pygments==2.18.0
 gradio==4.42.0
 langchain==0.2.14
 langchain-community==0.2.12
+langchain-anthropic==0.1.23
+langchain-ollama==0.1.2
 langchain-openai==0.1.22
 marqo==3.7.0
 nbformat==5.10.4

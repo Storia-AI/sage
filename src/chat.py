@@ -12,9 +12,9 @@ from langchain.chains import (create_history_aware_retriever,
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI
 
 import vector_store
+from llm import build_llm_via_langchain
 from repo_manager import RepoManager
 
 load_dotenv()
@@ -22,7 +22,7 @@ load_dotenv()
 
 def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
-    llm = ChatOpenAI(model=args.openai_model)
+    llm = build_llm_via_langchain(args.llm_provider, args.llm_model)
     retriever = vector_store.build_from_args(args).to_langchain().as_retriever()
 
     # Prompt to contextualize the latest query based on the chat history.
@@ -74,10 +74,11 @@ def append_sources_to_response(response):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI to chat with your codebase")
     parser.add_argument("repo_id", help="The ID of the repository to index")
+    parser.add_argument("--llm_provider", default="anthropic", choices=["openai", "anthropic", "ollama"])
     parser.add_argument(
-        "--openai_model",
-        default="gpt-4",
-        help="The OpenAI model to use for response generation",
+        "--llm_model",
+        default="claude-3-opus-20240229",
+        help="The LLM name. Must be supported by the provider specified via --llm_provider.",
     )
     parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
     parser.add_argument("--index_name", required=True, help="Vector store index name")

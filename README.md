@@ -1,8 +1,8 @@
 # What is this?
 
-![screenshot](assets/chat_screenshot.png)
-
 *TL;DR*: `repo2vec` is a simple-to-use, modular library enabling you to chat with any public or private codebase.
+
+![screenshot](assets/chat_screenshot.png)
 
 **Ok, but why chat with a codebase?**
 
@@ -14,7 +14,10 @@ the code itself.
 Features:
 - **Dead-simple set-up.** Run *two scripts* and you have a functional chat interface for your code. That's really it.
 - **Heavily documented answers.** Every response shows where in the code the context for the answer was pulled from. Let's build trust in the AI.
-- **Plug-and-play.** Want to improve the algorithms powering the code understanding/generation? We've made every component of the pipeline easily swappable. Customize to your heart's content.
+- **Runs locally or on the cloud.**
+    - Want privacy? No problem: you can use [Marqo](https://github.com/marqo-ai/marqo) for embeddings + vector store and [Ollama](ollama.com) for the chat LLM.
+    - Want speed and high performance? Also no problem. We support OpenAI batch embeddings + [Pinecone](https://www.pinecone.io/) for the vector store + OpenAI or Anthropic for the chat LLM.
+- **Plug-and-play.** Want to improve the algorithms powering the code understanding/generation? We've made every component of the pipeline easily swappable. Google-grade engineering standards allow you to customize to your heart's content.
 
 # How to run it
 ## Indexing the codebase
@@ -56,19 +59,33 @@ We currently support two options for indexing the codebase:
     We are planning on adding more providers soon, so that you can mix and match them. Contributions are also welcome!
 
 ## Chatting with the codebase
-To bring a `gradio` app where you can chat with your codebase, simply point it to your vector store:
+We provide a `gradio` app where you can chat with your codebase. You can use either a local LLM (via [Ollama](https://ollama.com)), or a cloud provider like OpenAI or Anthropic.
 
+To chat with a local LLM:
+1. Head over to [ollama.com](https://ollama.com) to download the appropriate binary for your machine.
+2. Pull the desired model, e.g. `ollama pull llama3.1`.
+3. Start the `gradio` app:
+    ```
+    python src/chat.py \
+        github-repo-name \  # e.g. Storia-AI/repo2vec
+        --llm_provider=ollama
+        --llm_model=llama3.1
+        --vector_store_type=marqo \  # or pinecone
+        --index_name=your-index-name
+    ```
+
+To chat with a cloud-based LLM, for instance Anthropic's Claude:
 ```
-export OPENAI_API_KEY=...
+export ANTHROPIC_API_KEY=...
 
 python src/chat.py \
     github-repo-name \  # e.g. Storia-AI/repo2vec
+    --llm_provider=anthropic \
+    --llm_model=claude-3-opus-20240229 \
     --vector_store_type=marqo \  # or pinecone
     --index_name=your-index-name
 ```
 To get a public URL for your chat app, set `--share=true`.
-
-Currently, the chat will use OpenAI's GPT-4, but we are working on adding support for other providers and local LLMs. Stay tuned!
 
 # Peeking under the hood
 
@@ -79,7 +96,7 @@ The `src/index.py` script performs the following steps:
 2. **Chunks files**. See [Chunker](src/chunker.py).
     - For code files, we implement a special `CodeChunker` that takes the parse tree into account.
 3. **Batch-embeds chunks**. See [Embedder](src/embedder.py). We currently support:
-    - [Marqo](https://github.com/marqo-ai/marqo) as an embedder, which allows you to specify your favorite Hugging Face embedding model;
+    - [Marqo](https://github.com/marqo-ai/marqo) as an embedder, which allows you to specify your favorite Hugging Face embedding model, and
     - OpenAI's [batch embedding API](https://platform.openai.com/docs/guides/batch/overview), which is much faster and cheaper than the regular synchronous embedding API.
 4. **Stores embeddings in a vector store**. See [VectorStore](src/vector_store.py).
     - We currently support [Marqo](https://github.com/marqo-ai/marqo) and [Pinecone](https://pinecone.io), but you can easily plug in your own.
@@ -100,7 +117,7 @@ The `src/chat.py` brings up a [Gradio app](https://www.gradio.app/) with a chat 
 1. Rewrites the query to be self-contained based on previous queries
 2. Embeds the rewritten query using OpenAI embeddings
 3. Retrieves relevant documents from the vector store
-4. Calls an OpenAI LLM to respond to the user query based on the retrieved documents.
+4. Calls a chat LLM to respond to the user query based on the retrieved documents.
 
 The sources are conveniently surfaced in the chat and linked directly to GitHub.
 
