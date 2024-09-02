@@ -15,6 +15,15 @@ MAX_TOKENS_PER_CHUNK = 8192  # The ADA embedder from OpenAI has a maximum of 819
 MAX_CHUNKS_PER_BATCH = 2048  # The OpenAI batch embedding API enforces a maximum of 2048 chunks per batch.
 MAX_TOKENS_PER_JOB = 3_000_000  # The OpenAI batch embedding API enforces a maximum of 3M tokens processed at once.
 
+# Note that OpenAI embedding models have fixed dimensions, however, taking a slice of them is possible.
+# See "Reducing embedding dimensions" under https://platform.openai.com/docs/guides/embeddings/use-cases and
+# https://platform.openai.com/docs/api-reference/embeddings/create#embeddings-create-dimensions
+OPENAI_DEFAULT_EMBEDDING_SIZE = {
+    "text-embedding-ada-002": 1536,
+    "text-embedding-3-small": 1536,
+    "text-embedding-3-large": 3072,
+}
+
 
 def _read_extensions(path):
     with open(path, "r") as f:
@@ -25,6 +34,20 @@ def main():
     parser = argparse.ArgumentParser(description="Batch-embeds a repository")
     parser.add_argument("repo_id", help="The ID of the repository to index")
     parser.add_argument("--embedder_type", default="openai", choices=["openai", "marqo"])
+    parser.add_argument(
+        "--embedding_model",
+        type=str,
+        default=None,
+        help="The embedding model. Defaults to `text-embedding-ada-002` for OpenAI and `hf/e5-base-v2` for Marqo.",
+    )
+    parser.add_argument(
+        "--embedding_size",
+        type=int,
+        default=None,
+        help="The embedding size to use for OpenAI; defaults to OpenAI defaults (e.g. 1536 for `text-embedding-3-small`"
+        " and 3072 for `text-embedding-3-large`). Note that OpenAI allows users to reduce these default dimensions. "
+        "No need to specify an embedding size for Marqo, since the embedding model determines it.",
+    )
     parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
     parser.add_argument(
         "--local_dir",
@@ -43,7 +66,11 @@ def main():
         default=2000,
         help="Maximum chunks per batch. We recommend 2000 for the OpenAI embedder. Marqo enforces a limit of 64.",
     )
-    parser.add_argument("--index_name", required=True, help="Vector store index name")
+    parser.add_argument(
+        "--index_name",
+        required=True,
+        help="Vector store index name. For Pinecone, make sure to create it with the right embedding size.",
+    )
     parser.add_argument(
         "--include",
         help="Path to a file containing a list of extensions to include. One extension per line.",
@@ -63,11 +90,6 @@ def main():
         "--marqo_url",
         default="http://localhost:8882",
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
-    )
-    parser.add_argument(
-        "--marqo_embedding_model",
-        default="hf/e5-base-v2",
-        help="The embedding model to use for Marqo.",
     )
     args = parser.parse_args()
 
@@ -90,6 +112,14 @@ def main():
     if args.include and args.exclude:
         parser.error("At most one of --include and --exclude can be specified.")
 
+    # Set default values based on other arguments
+    if args.embedder_type is None:
+        args.embedding_model = "text-embedding-ada-002" if args.embedder_type == "openai" else "hf/e5-base-v2"
+    if args.embedding_size is None and args.embedder_type == "openai":
+        args.embedding_size = OPENAI_DEFAULT_EMBEDDING_SIZE.get(args.embedding_model)
+        # No need to set embedding_size for Marqo, since the embedding model determines the embedding size.
+        logging.warn("--embedding_size is ignored for Marqo embedder.")
+
     included_extensions = _read_extensions(args.include) if args.include else None
     excluded_extensions = _read_extensions(args.exclude) if args.exclude else None
 
@@ -106,10 +136,10 @@ def main():
     chunker = UniversalChunker(max_tokens=args.tokens_per_chunk)
 
     if args.embedder_type == "openai":
-        embedder = OpenAIBatchEmbedder(repo_manager, chunker, args.local_dir)
+        embedder = OpenAIBatchEmbedder(repo_manager, chunker, args.local_dir, args.embedding_model, args.embedding_size)
     elif args.embedder_type == "marqo":
         embedder = MarqoEmbedder(
-            repo_manager, chunker, index_name=args.index_name, url=args.marqo_url, model=args.marqo_embedding_model
+            repo_manager, chunker, index_name=args.index_name, url=args.marqo_url, model=args.embedding_model
         )
     else:
         raise ValueError(f"Unrecognized embedder type {args.embedder_type}")

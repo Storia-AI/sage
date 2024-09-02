@@ -9,7 +9,6 @@ from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from pinecone import Pinecone
 
-OPENAI_EMBEDDING_SIZE = 1536
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
 
@@ -43,7 +42,7 @@ class VectorStore(ABC):
 class PineconeVectorStore(VectorStore):
     """Vector store implementation using Pinecone."""
 
-    def __init__(self, index_name: str, namespace: str, dimension: int = OPENAI_EMBEDDING_SIZE):
+    def __init__(self, index_name: str, namespace: str, dimension: int):
         self.index_name = index_name
         self.dimension = dimension
         self.client = Pinecone()
@@ -100,7 +99,7 @@ class MarqoVectorStore(VectorStore):
 def build_from_args(args: dict) -> VectorStore:
     """Builds a vector store from the given command-line arguments."""
     if args.vector_store_type == "pinecone":
-        return PineconeVectorStore(index_name=args.index_name, namespace=args.repo_id)
+        return PineconeVectorStore(index_name=args.index_name, namespace=args.repo_id, dimension=args.embedding_size)
     elif args.vector_store_type == "marqo":
         return MarqoVectorStore(url=args.marqo_url, index_name=args.index_name)
     else:

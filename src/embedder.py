@@ -35,10 +35,14 @@ class BatchEmbedder(ABC):
 class OpenAIBatchEmbedder(BatchEmbedder):
     """Batch embedder that calls OpenAI. See https://platform.openai.com/docs/guides/batch/overview."""
 
-    def __init__(self, repo_manager: RepoManager, chunker: Chunker, local_dir: str):
+    def __init__(
+        self, repo_manager: RepoManager, chunker: Chunker, local_dir: str, embedding_model: str, embedding_size: int
+    ):
         self.repo_manager = repo_manager
         self.chunker = chunker
         self.local_dir = local_dir
+        self.embedding_model = embedding_model
+        self.embedding_size = embedding_size
         # IDs issued by OpenAI for each batch job mapped to metadata about the chunks.
         self.openai_batch_ids = {}
         self.client = OpenAI()
@@ -124,7 +128,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         logging.info("Issuing job for batch %s with %d chunks.", batch_id, len(chunks))
 
         # Create a .jsonl file with the batch.
-        request = OpenAIBatchEmbedder._chunks_to_request(chunks, batch_id)
+        request = OpenAIBatchEmbedder._chunks_to_request(chunks, batch_id, self.embedding_model, self.embedding_size)
         input_file = os.path.join(self.local_dir, f"batch_{batch_id}.jsonl")
         OpenAIBatchEmbedder._export_to_jsonl([request], input_file)
 
@@ -160,14 +164,15 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 f.write("\n")
 
     @staticmethod
-    def _chunks_to_request(chunks: List[Chunk], batch_id: str):
+    def _chunks_to_request(chunks: List[Chunk], batch_id: str, model: str, dimensions: int):
         """Convert a list of chunks to a batch request."""
         return {
             "custom_id": batch_id,
             "method": "POST",
             "url": "/v1/embeddings",
             "body": {
-                "model": "text-embedding-ada-002",
+                "model": model,
+                "dimensions": dimensions,
                 "input": [chunk.content for chunk in chunks],
             },
         }
