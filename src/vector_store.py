@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Generator, List, Tuple
 
 import marqo
-from langchain_community.vectorstores import Marqo
+from langchain_community.vectorstores import Marqo, Pinecone as LangChainPinecone
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from pinecone import Pinecone
@@ -61,7 +61,7 @@ class PineconeVectorStore(VectorStore):
         self.index.upsert(vectors=pinecone_vectors, namespace=self.namespace)
 
     def to_langchain(self):
-        return Pinecone.from_existing_index(
+        return LangChainPinecone.from_existing_index(
             index_name=self.index_name, embedding=OpenAIEmbeddings(), namespace=self.namespace
         )
 

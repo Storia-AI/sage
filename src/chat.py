@@ -77,7 +77,6 @@ if __name__ == "__main__":
     parser.add_argument("--llm_provider", default="anthropic", choices=["openai", "anthropic", "ollama"])
     parser.add_argument(
         "--llm_model",
-        default="claude-3-opus-20240229",
         help="The LLM name. Must be supported by the provider specified via --llm_provider.",
     )
     parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
@@ -93,6 +92,14 @@ if __name__ == "__main__":
         help="Whether to make the gradio app publicly accessible.",
     )
     args = parser.parse_args()
+
+    if not args.llm_model:
+        if args.llm_provider == "openai":
+            args.llm_model = "gpt-4"
+        elif args.llm_provider == "anthropic":
+            args.llm_model = "claude-3-opus-20240229"
+        else:
+            raise ValueError("Please specify --llm_model")
 
     rag_chain = build_rag_chain(args)
 
