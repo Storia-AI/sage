@@ -99,7 +99,8 @@ class MarqoVectorStore(VectorStore):
 def build_from_args(args: dict) -> VectorStore:
     """Builds a vector store from the given command-line arguments."""
     if args.vector_store_type == "pinecone":
-        return PineconeVectorStore(index_name=args.index_name, namespace=args.repo_id, dimension=args.embedding_size)
+        dimension = args.embedding_size if "embedding_size" in args else None
+        return PineconeVectorStore(index_name=args.index_name, namespace=args.repo_id, dimension=dimension)
     elif args.vector_store_type == "marqo":
         return MarqoVectorStore(url=args.marqo_url, index_name=args.index_name)
     else:
