@@ -38,9 +38,9 @@ We currently support two options for indexing the codebase:
 
     python src/index.py
         github-repo-name \  # e.g. Storia-AI/repo2vec
-        --embedder_type=marqo \
-        --vector_store_type=marqo \
-        --index_name=your-index-name
+        --embedder-type=marqo \
+        --vector-store-type=marqo \
+        --index-name=your-index-name
     ```
 
 2. **Using external providers** (OpenAI for embeddings and [Pinecone](https://www.pinecone.io/) for the vector store). To index your codebase, run:
@@ -52,11 +52,14 @@ We currently support two options for indexing the codebase:
 
     python src/index.py
         github-repo-name \  # e.g. Storia-AI/repo2vec
-        --embedder_type=openai \
-        --vector_store_type=pinecone \
-        --index_name=your-index-name
+        --embedder-type=openai \
+        --vector-store-type=pinecone \
+        --index-name=your-index-name
     ```
     We are planning on adding more providers soon, so that you can mix and match them. Contributions are also welcome!
+
+## Indexing GitHub Issues
+By default, we also index the open GitHub issues associated with a codebase. You can control what gets index with the `--index-repo` and `--index-issues` flags (and their converse `--no-index-repo` and `--no-index-issues`).
 
 ## Chatting with the codebase
 We provide a `gradio` app where you can chat with your codebase. You can use either a local LLM (via [Ollama](https://ollama.com)), or a cloud provider like OpenAI or Anthropic.
@@ -68,10 +71,10 @@ To chat with a local LLM:
     ```
     python src/chat.py \
         github-repo-name \  # e.g. Storia-AI/repo2vec
-        --llm_provider=ollama
-        --llm_model=llama3.1
-        --vector_store_type=marqo \  # or pinecone
-        --index_name=your-index-name
+        --llm-provider=ollama
+        --llm-model=llama3.1
+        --vector-store-type=marqo \  # or pinecone
+        --index-name=your-index-name
     ```
 
 To chat with a cloud-based LLM, for instance Anthropic's Claude:
@@ -80,10 +83,10 @@ export ANTHROPIC_API_KEY=...
 
 python src/chat.py \
     github-repo-name \  # e.g. Storia-AI/repo2vec
-    --llm_provider=anthropic \
-    --llm_model=claude-3-opus-20240229 \
-    --vector_store_type=marqo \  # or pinecone
-    --index_name=your-index-name
+    --llm-provider=anthropic \
+    --llm-model=claude-3-opus-20240229 \
+    --vector-store-type=marqo \  # or pinecone
+    --index-name=your-index-name
 ```
 To get a public URL for your chat app, set `--share=true`.
 
@@ -120,6 +123,10 @@ The `src/chat.py` brings up a [Gradio app](https://www.gradio.app/) with a chat 
 4. Calls a chat LLM to respond to the user query based on the retrieved documents.
 
 The sources are conveniently surfaced in the chat and linked directly to GitHub.
+
+# Changelog
+- 2024-09-03: Support for indexing GitHub issues.
+- 2024-08-30: Support for running everything locally (Marqo for embeddings, Ollama for LLMs).
 
 # Want your repository hosted?
 

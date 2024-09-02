@@ -70,15 +70,15 @@ def append_sources_to_response(response):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI to chat with your codebase")
     parser.add_argument("repo_id", help="The ID of the repository to index")
-    parser.add_argument("--llm_provider", default="anthropic", choices=["openai", "anthropic", "ollama"])
+    parser.add_argument("--llm-provider", default="anthropic", choices=["openai", "anthropic", "ollama"])
     parser.add_argument(
-        "--llm_model",
+        "--llm-model",
         help="The LLM name. Must be supported by the provider specified via --llm_provider.",
     )
-    parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
-    parser.add_argument("--index_name", required=True, help="Vector store index name")
+    parser.add_argument("--vector-store-type", default="pinecone", choices=["pinecone", "marqo"])
+    parser.add_argument("--index-name", required=True, help="Vector store index name")
     parser.add_argument(
-        "--marqo_url",
+        "--marqo-url",
         default="http://localhost:8882",
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
