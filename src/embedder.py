@@ -5,7 +5,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 import marqo
 from openai import OpenAI
@@ -56,8 +56,8 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         chunk_count = 0
         dataset_name = self.data_manager.dataset_id.split("/")[-1]
 
-        for filepath, content in self.data_manager.walk():
-            chunks = self.chunker.chunk(filepath, content)
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
 
@@ -164,17 +164,22 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 f.write("\n")
 
     @staticmethod
-    def _chunks_to_request(chunks: List[Chunk], batch_id: str, model: str, dimensions: int):
+    def _chunks_to_request(chunks: List[Chunk], batch_id: str, model: str, dimensions: Optional[int] = None) -> Dict:
         """Convert a list of chunks to a batch request."""
+        body = {
+            "model": model,
+            "input": [chunk.content for chunk in chunks],
+        }
+
+        # These are the only two models that support a dynamic embedding size.
+        if model in ["text-embedding-3-small", "text-embedding-3-large"] and dimensions is not None:
+            body["dimensions"] = dimensions
+
         return {
             "custom_id": batch_id,
             "method": "POST",
             "url": "/v1/embeddings",
-            "body": {
-                "model": model,
-                "dimensions": dimensions,
-                "input": [chunk.content for chunk in chunks],
-            },
+            "body": body,
         }
 
 
@@ -202,8 +207,8 @@ class MarqoEmbedder(BatchEmbedder):
         chunk_count = 0
         batch = []
 
-        for filepath, content in self.data_manager.walk():
-            chunks = self.chunker.chunk(filepath, content)
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
 
@@ -236,3 +241,14 @@ class MarqoEmbedder(BatchEmbedder):
         # Marqo stores embeddings as they are created, so they're already in the vector store. No need to download them
         # as we would with e.g. OpenAI, Cohere, or some other cloud-based embedding service.
         return []
+
+
+def build_batch_embedder_from_flags(data_manager: DataManager, chunker: Chunker, args) -> BatchEmbedder:
+    if args.embedder_type == "openai":
+        return OpenAIBatchEmbedder(data_manager, chunker, args.local_dir, args.embedding_model, args.embedding_size)
+    elif args.embedder_type == "marqo":
+        return MarqoEmbedder(
+            data_manager, chunker, index_name=args.index_name, url=args.marqo_url, model=args.embedding_model
+        )
+    else:
+        raise ValueError(f"Unrecognized embedder type {args.embedder_type}")

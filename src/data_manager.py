@@ -38,7 +38,7 @@ class GitHubRepoManager(DataManager):
             repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/repo2vec".
             local_dir: The local directory where the repository will be cloned.
         """
-        super.__init__(dataset_id=repo_id)
+        super().__init__(dataset_id=repo_id)
         self.repo_id = repo_id
 
         self.local_dir = local_dir or "/tmp/"
@@ -153,7 +153,7 @@ class GitHubRepoManager(DataManager):
                     except UnicodeDecodeError:
                         logging.warning("Unable to decode file %s. Skipping.", file_path)
                         continue
-                    relative_file_path = file_path[len(self.local_path) + 1 :]
+                    relative_file_path = file_path[len(self.local_dir) + 1 :]
                     metadata = {
                         "file_path": relative_file_path,
                         "url": self.url_for_file(relative_file_path),
@@ -162,5 +162,5 @@ class GitHubRepoManager(DataManager):
 
     def url_for_file(self, file_path: str) -> str:
         """Converts a repository file path to a GitHub link."""
-        file_path = file_path[len(self.repo_id) :]
+        file_path = file_path[len(self.repo_id) + 1 :]
         return f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"

@@ -7,15 +7,13 @@ import argparse
 
 import gradio as gr
 from dotenv import load_dotenv
-from langchain.chains import (create_history_aware_retriever,
-                              create_retrieval_chain)
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 import vector_store
 from llm import build_llm_via_langchain
-from repo_manager import RepoManager
 
 load_dotenv()
 
@@ -63,12 +61,10 @@ def build_rag_chain(args):
 
 def append_sources_to_response(response):
     """Given an OpenAI completion response, appends to it GitHub links of the context sources."""
-    filenames = [document.metadata["filename"] for document in response["context"]]
-    # Deduplicate filenames while preserving their order.
-    filenames = list(dict.fromkeys(filenames))
-    repo_manager = RepoManager(args.repo_id)
-    github_links = [repo_manager.github_link_for_file(filename) for filename in filenames]
-    return response["answer"] + "\n\nSources:\n" + "\n".join(github_links)
+    urls = [document.metadata["url"] for document in response["context"]]
+    # Deduplicate urls while preserving their order.
+    urls = list(dict.fromkeys(urls))
+    return response["answer"] + "\n\nSources:\n" + "\n".join(urls)
 
 
 if __name__ == "__main__":
