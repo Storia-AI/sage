@@ -5,23 +5,23 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 import marqo
 from openai import OpenAI
 
 from chunker import Chunk, Chunker
-from repo_manager import RepoManager
+from data_manager import DataManager
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
 
 class BatchEmbedder(ABC):
-    """Abstract class for batch embedding of a repository."""
+    """Abstract class for batch embedding of a dataset."""
 
     @abstractmethod
-    def embed_repo(self, chunks_per_batch: int, max_embedding_jobs: int = None):
-        """Issues batch embedding jobs for the entire repository."""
+    def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
+        """Issues batch embedding jobs for the entire dataset."""
 
     @abstractmethod
     def embeddings_are_ready(self) -> bool:
@@ -29,16 +29,16 @@ class BatchEmbedder(ABC):
 
     @abstractmethod
     def download_embeddings(self) -> Generator[Vector, None, None]:
-        """Yields (chunk_metadata, embedding) pairs for each chunk in the repository."""
+        """Yields (chunk_metadata, embedding) pairs for each chunk in the dataset."""
 
 
 class OpenAIBatchEmbedder(BatchEmbedder):
     """Batch embedder that calls OpenAI. See https://platform.openai.com/docs/guides/batch/overview."""
 
     def __init__(
-        self, repo_manager: RepoManager, chunker: Chunker, local_dir: str, embedding_model: str, embedding_size: int
+        self, data_manager: DataManager, chunker: Chunker, local_dir: str, embedding_model: str, embedding_size: int
     ):
-        self.repo_manager = repo_manager
+        self.data_manager = data_manager
         self.chunker = chunker
         self.local_dir = local_dir
         self.embedding_model = embedding_model
@@ -47,17 +47,17 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         self.openai_batch_ids = {}
         self.client = OpenAI()
 
-    def embed_repo(self, chunks_per_batch: int, max_embedding_jobs: int = None):
-        """Issues batch embedding jobs for the entire repository."""
+    def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
+        """Issues batch embedding jobs for the entire dataset."""
         if self.openai_batch_ids:
             raise ValueError("Embeddings are in progress.")
 
         batch = []
         chunk_count = 0
-        repo_name = self.repo_manager.repo_id.split("/")[-1]
+        dataset_name = self.data_manager.dataset_id.split("/")[-1]
 
-        for filepath, content in self.repo_manager.walk():
-            chunks = self.chunker.chunk(filepath, content)
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
 
@@ -65,9 +65,9 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 for i in range(0, len(batch), chunks_per_batch):
                     sub_batch = batch[i : i + chunks_per_batch]
                     openai_batch_id = self._issue_job_for_chunks(
-                        sub_batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}"
+                        sub_batch, batch_id=f"{dataset_name}/{len(self.openai_batch_ids)}"
                     )
-                    self.openai_batch_ids[openai_batch_id] = [chunk.to_metadata for chunk in sub_batch]
+                    self.openai_batch_ids[openai_batch_id] = [chunk.metadata for chunk in sub_batch]
                     if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
                         logging.info("Reached the maximum number of embedding jobs. Stopping.")
                         return
@@ -75,8 +75,8 @@ class OpenAIBatchEmbedder(BatchEmbedder):
 
         # Finally, commit the last batch.
         if batch:
-            openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{repo_name}/{len(self.openai_batch_ids)}")
-            self.openai_batch_ids[openai_batch_id] = [chunk.to_metadata for chunk in batch]
+            openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{dataset_name}/{len(self.openai_batch_ids)}")
+            self.openai_batch_ids[openai_batch_id] = [chunk.metadata for chunk in batch]
         logging.info("Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count)
 
         # Save the job IDs to a file, just in case this script is terminated by mistake.
@@ -97,7 +97,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         return are_ready
 
     def download_embeddings(self) -> Generator[Vector, None, None]:
-        """Yield a (chunk_metadata, embedding) pair for each chunk in the repository."""
+        """Yield a (chunk_metadata, embedding) pair for each chunk in the dataset."""
         job_ids = self.openai_batch_ids.keys()
         statuses = [self.client.batches.retrieve(job_id.strip()) for job_id in job_ids]
 
@@ -164,17 +164,22 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 f.write("\n")
 
     @staticmethod
-    def _chunks_to_request(chunks: List[Chunk], batch_id: str, model: str, dimensions: int):
+    def _chunks_to_request(chunks: List[Chunk], batch_id: str, model: str, dimensions: Optional[int] = None) -> Dict:
         """Convert a list of chunks to a batch request."""
+        body = {
+            "model": model,
+            "input": [chunk.content for chunk in chunks],
+        }
+
+        # These are the only two models that support a dynamic embedding size.
+        if model in ["text-embedding-3-small", "text-embedding-3-large"] and dimensions is not None:
+            body["dimensions"] = dimensions
+
         return {
             "custom_id": batch_id,
             "method": "POST",
             "url": "/v1/embeddings",
-            "body": {
-                "model": model,
-                "dimensions": dimensions,
-                "input": [chunk.content for chunk in chunks],
-            },
+            "body": body,
         }
 
 
@@ -184,8 +189,8 @@ class MarqoEmbedder(BatchEmbedder):
     Embeddings can be stored locally (in which case `url` the constructor should point to localhost) or in the cloud.
     """
 
-    def __init__(self, repo_manager: RepoManager, chunker: Chunker, index_name: str, url: str, model="hf/e5-base-v2"):
-        self.repo_manager = repo_manager
+    def __init__(self, data_manager: DataManager, chunker: Chunker, index_name: str, url: str, model="hf/e5-base-v2"):
+        self.data_manager = data_manager
         self.chunker = chunker
         self.client = marqo.Client(url=url)
         self.index = self.client.index(index_name)
@@ -194,16 +199,16 @@ class MarqoEmbedder(BatchEmbedder):
         if not index_name in all_index_names:
             self.client.create_index(index_name, model=model)
 
-    def embed_repo(self, chunks_per_batch: int, max_embedding_jobs: int = None):
-        """Issues batch embedding jobs for the entire repository."""
+    def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
+        """Issues batch embedding jobs for the entire dataset."""
         if chunks_per_batch > 64:
             raise ValueError("Marqo enforces a limit of 64 chunks per batch.")
 
         chunk_count = 0
         batch = []
 
-        for filepath, content in self.repo_manager.walk():
-            chunks = self.chunker.chunk(filepath, content)
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
 
@@ -212,7 +217,7 @@ class MarqoEmbedder(BatchEmbedder):
                     sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Indexing %d chunks...", len(sub_batch))
                     self.index.add_documents(
-                        documents=[chunk.to_metadata for chunk in sub_batch],
+                        documents=[chunk.metadata for chunk in sub_batch],
                         tensor_fields=["text"],
                     )
 
@@ -223,16 +228,27 @@ class MarqoEmbedder(BatchEmbedder):
 
         # Finally, commit the last batch.
         if batch:
-            self.index.add_documents(documents=[chunk.to_metadata for chunk in batch], tensor_fields=["text"])
+            self.index.add_documents(documents=[chunk.metadata for chunk in batch], tensor_fields=["text"])
         logging.info(f"Successfully embedded {chunk_count} chunks.")
 
     def embeddings_are_ready(self) -> bool:
         """Checks whether the batch embedding jobs are done."""
-        # Marqo indexes documents synchronously, so once embed_repo() returns, the embeddings are ready.
+        # Marqo indexes documents synchronously, so once embed_dataset() returns, the embeddings are ready.
         return True
 
     def download_embeddings(self) -> Generator[Vector, None, None]:
-        """Yields (chunk_metadata, embedding) pairs for each chunk in the repository."""
+        """Yields (chunk_metadata, embedding) pairs for each chunk in the dataset."""
         # Marqo stores embeddings as they are created, so they're already in the vector store. No need to download them
         # as we would with e.g. OpenAI, Cohere, or some other cloud-based embedding service.
         return []
+
+
+def build_batch_embedder_from_flags(data_manager: DataManager, chunker: Chunker, args) -> BatchEmbedder:
+    if args.embedder_type == "openai":
+        return OpenAIBatchEmbedder(data_manager, chunker, args.local_dir, args.embedding_model, args.embedding_size)
+    elif args.embedder_type == "marqo":
+        return MarqoEmbedder(
+            data_manager, chunker, index_name=args.index_name, url=args.marqo_url, model=args.embedding_model
+        )
+    else:
+        raise ValueError(f"Unrecognized embedder type {args.embedder_type}")

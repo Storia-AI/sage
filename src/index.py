@@ -4,9 +4,10 @@ import argparse
 import logging
 import time
 
-from chunker import UniversalChunker
-from embedder import MarqoEmbedder, OpenAIBatchEmbedder
-from repo_manager import RepoManager
+from chunker import UniversalFileChunker
+from data_manager import GitHubRepoManager
+from embedder import build_batch_embedder_from_flags
+from github import GitHubIssuesChunker, GitHubIssuesManager
 from vector_store import build_from_args
 
 logging.basicConfig(level=logging.INFO)
@@ -31,43 +32,42 @@ def _read_extensions(path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Batch-embeds a repository")
+    parser = argparse.ArgumentParser(description="Batch-embeds a GitHub repository and its issues.")
     parser.add_argument("repo_id", help="The ID of the repository to index")
-    parser.add_argument("--embedder_type", default="openai", choices=["openai", "marqo"])
+    parser.add_argument("--embedder-type", default="openai", choices=["openai", "marqo"])
     parser.add_argument(
-        "--embedding_model",
+        "--embedding-model",
         type=str,
         default=None,
         help="The embedding model. Defaults to `text-embedding-ada-002` for OpenAI and `hf/e5-base-v2` for Marqo.",
     )
     parser.add_argument(
-        "--embedding_size",
+        "--embedding-size",
         type=int,
         default=None,
-        help="The embedding size to use for OpenAI; defaults to OpenAI defaults (e.g. 1536 for `text-embedding-3-small`"
-        " and 3072 for `text-embedding-3-large`). Note that OpenAI allows users to reduce these default dimensions. "
-        "No need to specify an embedding size for Marqo, since the embedding model determines it.",
+        help="The embedding size to use for OpenAI text-embedding-3* models. Defaults to 1536 for small and 3072 for "
+        "large. Note that no other OpenAI models support a dynamic embedding size, nor do models used with Marqo.",
     )
-    parser.add_argument("--vector_store_type", default="pinecone", choices=["pinecone", "marqo"])
+    parser.add_argument("--vector-store-type", default="pinecone", choices=["pinecone", "marqo"])
     parser.add_argument(
-        "--local_dir",
+        "--local-dir",
         default="repos",
         help="The local directory to store the repository",
     )
     parser.add_argument(
-        "--tokens_per_chunk",
+        "--tokens-per-chunk",
         type=int,
         default=800,
         help="https://arxiv.org/pdf/2406.14497 recommends a value between 200-800.",
     )
     parser.add_argument(
-        "--chunks_per_batch",
+        "--chunks-per-batch",
         type=int,
         default=2000,
         help="Maximum chunks per batch. We recommend 2000 for the OpenAI embedder. Marqo enforces a limit of 64.",
     )
     parser.add_argument(
-        "--index_name",
+        "--index-name",
         required=True,
         help="Vector store index name. For Pinecone, make sure to create it with the right embedding size.",
     )
@@ -81,15 +81,29 @@ def main():
         help="Path to a file containing a list of extensions to exclude. One extension per line.",
     )
     parser.add_argument(
-        "--max_embedding_jobs",
+        "--max-embedding-jobs",
         type=int,
         help="Maximum number of embedding jobs to run. Specifying this might result in "
         "indexing only part of the repository, but prevents you from burning through OpenAI credits.",
     )
     parser.add_argument(
-        "--marqo_url",
+        "--marqo-url",
         default="http://localhost:8882",
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
+    )
+    # Pass --no-index-repo in order to not index the repository.
+    parser.add_argument(
+        "--index-repo",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether to index the repository. At least one of --index-repo and --index-issues must be True.",
+    )
+    # Pass --no-index-issues in order to not index the issues.
+    parser.add_argument(
+        "--index-issues",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether to index GitHub issues. At least one of --index-repo and --index-issues must be True.",
     )
     args = parser.parse_args()
 
@@ -111,56 +125,81 @@ def main():
         parser.error(f"The maximum number of chunks per job is {MAX_TOKENS_PER_JOB}.")
     if args.include and args.exclude:
         parser.error("At most one of --include and --exclude can be specified.")
+    if not args.index_repo and not args.index_issues:
+        parser.error("At least one of --index-repo and --index-issues must be true.")
 
     # Set default values based on other arguments
     if args.embedding_model is None:
         args.embedding_model = "text-embedding-ada-002" if args.embedder_type == "openai" else "hf/e5-base-v2"
     if args.embedding_size is None and args.embedder_type == "openai":
         args.embedding_size = OPENAI_DEFAULT_EMBEDDING_SIZE.get(args.embedding_model)
-        # No need to set embedding_size for Marqo, since the embedding model determines the embedding size.
-        logging.warn("--embedding_size is ignored for Marqo embedder.")
 
-    included_extensions = _read_extensions(args.include) if args.include else None
-    excluded_extensions = _read_extensions(args.exclude) if args.exclude else None
+    ######################
+    # Step 1: Embeddings #
+    ######################
 
-    logging.info("Cloning the repository...")
-    repo_manager = RepoManager(
-        args.repo_id,
-        local_dir=args.local_dir,
-        included_extensions=included_extensions,
-        excluded_extensions=excluded_extensions,
-    )
-    repo_manager.clone()
+    # Index the repository.
+    repo_embedder = None
+    if args.index_repo:
+        included_extensions = _read_extensions(args.include) if args.include else None
+        excluded_extensions = _read_extensions(args.exclude) if args.exclude else None
 
-    logging.info("Issuing embedding jobs...")
-    chunker = UniversalChunker(max_tokens=args.tokens_per_chunk)
-
-    if args.embedder_type == "openai":
-        embedder = OpenAIBatchEmbedder(repo_manager, chunker, args.local_dir, args.embedding_model, args.embedding_size)
-    elif args.embedder_type == "marqo":
-        embedder = MarqoEmbedder(
-            repo_manager, chunker, index_name=args.index_name, url=args.marqo_url, model=args.embedding_model
+        logging.info("Cloning the repository...")
+        repo_manager = GitHubRepoManager(
+            args.repo_id,
+            local_dir=args.local_dir,
+            included_extensions=included_extensions,
+            excluded_extensions=excluded_extensions,
         )
-    else:
-        raise ValueError(f"Unrecognized embedder type {args.embedder_type}")
+        repo_manager.download()
+        logging.info("Embedding the repo...")
+        chunker = UniversalFileChunker(max_tokens=args.tokens_per_chunk)
+        repo_embedder = build_batch_embedder_from_flags(repo_manager, chunker, args)
+        repo_embedder.embed_dataset(args.chunks_per_batch, args.max_embedding_jobs)
 
-    embedder.embed_repo(args.chunks_per_batch, args.max_embedding_jobs)
+    # Index the GitHub issues.
+    issues_embedder = None
+    assert args.index_issues is True
+    if args.index_issues:
+        logging.info("Issuing embedding jobs for GitHub issues...")
+        issues_manager = GitHubIssuesManager(args.repo_id)
+        issues_manager.download()
+        logging.info("Embedding GitHub issues...")
+        chunker = GitHubIssuesChunker(max_tokens=args.tokens_per_chunk)
+        issues_embedder = build_batch_embedder_from_flags(issues_manager, chunker, args)
+        issues_embedder.embed_dataset(args.chunks_per_batch, args.max_embedding_jobs)
+
+    ########################
+    # Step 2: Vector Store #
+    ########################
 
     if args.vector_store_type == "marqo":
         # Marqo computes embeddings and stores them in the vector store at once, so we're done.
         logging.info("Done!")
         return
 
-    logging.info("Waiting for embeddings to be ready...")
-    while not embedder.embeddings_are_ready():
-        logging.info("Sleeping for 30 seconds...")
-        time.sleep(30)
+    if repo_embedder is not None:
+        logging.info("Waiting for repo embeddings to be ready...")
+        while not repo_embedder.embeddings_are_ready():
+            logging.info("Sleeping for 30 seconds...")
+            time.sleep(30)
 
-    logging.info("Moving embeddings to the vector store...")
-    # Note to developer: Replace this with your preferred vector store.
-    vector_store = build_from_args(args)
-    vector_store.ensure_exists()
-    vector_store.upsert(embedder.download_embeddings())
+        logging.info("Moving embeddings to the repo vector store...")
+        repo_vector_store = build_from_args(args)
+        repo_vector_store.ensure_exists()
+        repo_vector_store.upsert(repo_embedder.download_embeddings())
+
+    if issues_embedder is not None:
+        logging.info("Waiting for issue embeddings to be ready...")
+        while not issues_embedder.embeddings_are_ready():
+            logging.info("Sleeping for 30 seconds...")
+            time.sleep(30)
+
+        logging.info("Moving embeddings to the issues vector store...")
+        issues_vector_store = build_from_args(args)
+        issues_vector_store.ensure_exists()
+        issues_vector_store.upsert(issues_embedder.download_embeddings())
+
     logging.info("Done!")
 
 

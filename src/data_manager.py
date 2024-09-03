@@ -2,13 +2,28 @@
 
 import logging
 import os
+from abc import abstractmethod
 from functools import cached_property
+from typing import Any, Dict, Generator, Tuple
 
 import requests
 from git import GitCommandError, Repo
 
 
-class RepoManager:
+class DataManager:
+    def __init__(self, dataset_id: str):
+        self.dataset_id = dataset_id
+
+    @abstractmethod
+    def download(self) -> bool:
+        """Downloads the data from a remote location."""
+
+    @abstractmethod
+    def walk(self) -> Generator[Tuple[Any, Dict], None, None]:
+        """Yields a tuple of (data, metadata) for each data item in the dataset."""
+
+
+class GitHubRepoManager(DataManager):
     """Class to manage a local clone of a GitHub repository."""
 
     def __init__(
@@ -23,11 +38,18 @@ class RepoManager:
             repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/repo2vec".
             local_dir: The local directory where the repository will be cloned.
         """
+        super().__init__(dataset_id=repo_id)
         self.repo_id = repo_id
+
         self.local_dir = local_dir or "/tmp/"
         if not os.path.exists(self.local_dir):
             os.makedirs(self.local_dir)
         self.local_path = os.path.join(self.local_dir, repo_id)
+
+        self.log_dir = os.path.join(self.local_dir, "logs", repo_id)
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+
         self.access_token = os.getenv("GITHUB_TOKEN")
         self.included_extensions = included_extensions
         self.excluded_extensions = excluded_extensions
@@ -58,7 +80,7 @@ class RepoManager:
             branch = "main"
         return branch
 
-    def clone(self) -> bool:
+    def download(self) -> bool:
         """Clones the repository to the local directory, if it's not already cloned."""
         if os.path.exists(self.local_path):
             # The repository is already cloned.
@@ -94,38 +116,35 @@ class RepoManager:
             return False
         return True
 
-    def walk(self, log_dir: str = None):
-        """Walks the local repository path and yields a tuple of (filepath, content) for each file.
+    def walk(self) -> Generator[Tuple[Any, Dict], None, None]:
+        """Walks the local repository path and yields a tuple of (content, metadata) for each file.
         The filepath is relative to the root of the repository (e.g. "org/repo/your/file/path.py").
 
         Args:
             included_extensions: Optional set of extensions to include.
             excluded_extensions: Optional set of extensions to exclude.
-            log_dir: Optional directory where to log the included and excluded files.
         """
         # We will keep apending to these files during the iteration, so we need to clear them first.
-        if log_dir:
-            repo_name = self.repo_id.replace("/", "_")
-            included_log_file = os.path.join(log_dir, f"included_{repo_name}.txt")
-            excluded_log_file = os.path.join(log_dir, f"excluded_{repo_name}.txt")
-            if os.path.exists(included_log_file):
-                os.remove(included_log_file)
-            if os.path.exists(excluded_log_file):
-                os.remove(excluded_log_file)
+        repo_name = self.repo_id.replace("/", "_")
+        included_log_file = os.path.join(self.log_dir, f"included_{repo_name}.txt")
+        excluded_log_file = os.path.join(self.log_dir, f"excluded_{repo_name}.txt")
+        if os.path.exists(included_log_file):
+            os.remove(included_log_file)
+        if os.path.exists(excluded_log_file):
+            os.remove(excluded_log_file)
 
         for root, _, files in os.walk(self.local_path):
             file_paths = [os.path.join(root, file) for file in files]
             included_file_paths = [f for f in file_paths if self._should_include(f)]
 
-            if log_dir:
-                with open(included_log_file, "a") as f:
-                    for path in included_file_paths:
-                        f.write(path + "\n")
+            with open(included_log_file, "a") as f:
+                for path in included_file_paths:
+                    f.write(path + "\n")
 
-                excluded_file_paths = set(file_paths).difference(set(included_file_paths))
-                with open(excluded_log_file, "a") as f:
-                    for path in excluded_file_paths:
-                        f.write(path + "\n")
+            excluded_file_paths = set(file_paths).difference(set(included_file_paths))
+            with open(excluded_log_file, "a") as f:
+                for path in excluded_file_paths:
+                    f.write(path + "\n")
 
             for file_path in included_file_paths:
                 with open(file_path, "r") as f:
@@ -134,9 +153,14 @@ class RepoManager:
                     except UnicodeDecodeError:
                         logging.warning("Unable to decode file %s. Skipping.", file_path)
                         continue
-                    yield file_path[len(self.local_dir) + 1 :], contents
+                    relative_file_path = file_path[len(self.local_dir) + 1 :]
+                    metadata = {
+                        "file_path": relative_file_path,
+                        "url": self.url_for_file(relative_file_path),
+                    }
+                    yield contents, metadata
 
-    def github_link_for_file(self, file_path: str) -> str:
+    def url_for_file(self, file_path: str) -> str:
         """Converts a repository file path to a GitHub link."""
-        file_path = file_path[len(self.repo_id) :]
+        file_path = file_path[len(self.repo_id) + 1 :]
         return f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"

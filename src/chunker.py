@@ -3,8 +3,8 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from functools import lru_cache
-from typing import List, Optional
+from functools import cached_property
+from typing import Any, Dict, List, Optional
 
 import nbformat
 import pygments
@@ -14,31 +14,47 @@ from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
 logger = logging.getLogger(__name__)
+tokenizer = tiktoken.get_encoding("cl100k_base")
+
+
+class Chunk:
+    @abstractmethod
+    def content(self) -> str:
+        """The content of the chunk to be indexed."""
+
+    @abstractmethod
+    def metadata(self) -> Dict:
+        """Metadata for the chunk to be indexed."""
 
 
 @dataclass
-class Chunk:
+class FileChunk(Chunk):
     """A chunk of code or text extracted from a file in the repository."""
 
-    filename: str
+    file_content: str    # The content of the entire file, not just this chunk.
+    file_metadata: Dict  # Metadata of the entire file, not just this chunk.
     start_byte: int
     end_byte: int
-    _content: Optional[str] = None
 
-    @property
+    @cached_property
+    def filename(self):
+        if not "file_path" in self.file_metadata:
+            raise ValueError("file_metadata must contain a 'file_path' key.")
+        return self.file_metadata["file_path"]
+
+    @cached_property
     def content(self) -> Optional[str]:
         """The text content to be embedded. Might contain information beyond just the text snippet from the file."""
-        return self._content
+        return self.filename + "\n\n" + self.file_content[self.start_byte : self.end_byte]
 
-    @property
-    def to_metadata(self):
+    @cached_property
+    def metadata(self):
         """Converts the chunk to a dictionary that can be passed to a vector store."""
         # Some vector stores require the IDs to be ASCII.
         filename_ascii = self.filename.encode("ascii", "ignore").decode("ascii")
-        return {
+        chunk_metadata = {
             # Some vector stores require the IDs to be ASCII.
             "id": f"{filename_ascii}_{self.start_byte}_{self.end_byte}",
-            "filename": self.filename,
             "start_byte": self.start_byte,
             "end_byte": self.end_byte,
             # Note to developer: When choosing a large chunk size, you might exceed the vector store's metadata
@@ -46,22 +62,13 @@ class Chunk:
             # directly from the repository when needed.
             "text": self.content,
         }
+        chunk_metadata.update(self.file_metadata)
+        return chunk_metadata
 
-    def populate_content(self, file_content: str):
-        """Populates the content of the chunk with the file path and file content."""
-        self._content = self.filename + "\n\n" + file_content[self.start_byte : self.end_byte]
-
-    def num_tokens(self, tokenizer):
-        """Counts the number of tokens in the chunk."""
-        if not self.content:
-            raise ValueError("Content not populated.")
-        return Chunk._cached_num_tokens(self.content, tokenizer)
-
-    @staticmethod
-    @lru_cache(maxsize=1024)
-    def _cached_num_tokens(content: str, tokenizer):
-        """Static method to cache token counts."""
-        return len(tokenizer.encode(content, disallowed_special=()))
+    @cached_property
+    def num_tokens(self):
+        """Number of tokens in this chunk."""
+        return len(tokenizer.encode(self.content, disallowed_special=()))
 
     def __eq__(self, other):
         if isinstance(other, Chunk):
@@ -77,20 +84,19 @@ class Chunk:
 
 
 class Chunker(ABC):
-    """Abstract class for chunking a file into smaller pieces."""
+    """Abstract class for chunking a datum into smaller pieces."""
 
     @abstractmethod
-    def chunk(self, file_path: str, file_content: str) -> List[Chunk]:
-        """Chunks a file into smaller pieces."""
+    def chunk(self, content: Any, metadata: Dict) -> List[Chunk]:
+        """Chunks a datum into smaller pieces."""
 
 
-class CodeChunker(Chunker):
+class CodeFileChunker(Chunker):
     """Splits a code file into chunks of at most `max_tokens` tokens each."""
 
     def __init__(self, max_tokens: int):
         self.max_tokens = max_tokens
-        self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        self.text_chunker = TextChunker(max_tokens)
+        self.text_chunker = TextFileChunker(max_tokens)
 
     @staticmethod
     def _get_language_from_filename(filename: str):
@@ -103,25 +109,24 @@ class CodeChunker(Chunker):
         except pygments.util.ClassNotFound:
             return None
 
-    def _chunk_node(self, node: Node, filename: str, file_content: str) -> List[Chunk]:
+    def _chunk_node(self, node: Node, file_content: str, file_metadata: Dict) -> List[FileChunk]:
         """Splits a node in the parse tree into a flat list of chunks."""
-        node_chunk = Chunk(filename, node.start_byte, node.end_byte)
-        node_chunk.populate_content(file_content)
+        node_chunk = FileChunk(file_content, file_metadata, node.start_byte, node.end_byte)
 
-        if node_chunk.num_tokens(self.tokenizer) <= self.max_tokens:
+        if node_chunk.num_tokens <= self.max_tokens:
             return [node_chunk]
 
         if not node.children:
             # This is a leaf node, but it's too long. We'll have to split it with a text tokenizer.
-            return self.text_chunker.chunk(filename, file_content[node.start_byte : node.end_byte])
+            return self.text_chunker.chunk(file_content[node.start_byte : node.end_byte], file_metadata)
 
         chunks = []
         for child in node.children:
-            chunks.extend(self._chunk_node(child, filename, file_content))
+            chunks.extend(self._chunk_node(child, file_content, file_metadata))
 
         for chunk in chunks:
             # This should always be true. Otherwise there must be a bug in the code.
-            assert chunk.content and chunk.num_tokens(self.tokenizer) <= self.max_tokens
+            assert chunk.num_tokens <= self.max_tokens
 
         # Merge neighboring chunks if their combined size doesn't exceed max_tokens. The goal is to avoid pathologically
         # small chunks that end up being undeservedly preferred by the retriever.
@@ -129,16 +134,16 @@ class CodeChunker(Chunker):
         for chunk in chunks:
             if not merged_chunks:
                 merged_chunks.append(chunk)
-            elif merged_chunks[-1].num_tokens(self.tokenizer) + chunk.num_tokens(self.tokenizer) < self.max_tokens - 50:
+            elif merged_chunks[-1].num_tokens + chunk.num_tokens < self.max_tokens - 50:
                 # There's a good chance that merging these two chunks will be under the token limit. We're not 100% sure
                 # at this point, because tokenization is not necessarily additive.
-                merged = Chunk(
-                    merged_chunks[-1].filename,
+                merged = FileChunk(
+                    file_content,
+                    file_metadata,
                     merged_chunks[-1].start_byte,
                     chunk.end_byte,
                 )
-                merged.populate_content(file_content)
-                if merged.num_tokens(self.tokenizer) <= self.max_tokens:
+                if merged.num_tokens <= self.max_tokens:
                     merged_chunks[-1] = merged
                 else:
                     merged_chunks.append(chunk)
@@ -148,20 +153,20 @@ class CodeChunker(Chunker):
 
         for chunk in merged_chunks:
             # This should always be true. Otherwise there's a bug worth investigating.
-            assert chunk.content and chunk.num_tokens(self.tokenizer) <= self.max_tokens
+            assert chunk.num_tokens <= self.max_tokens
 
         return merged_chunks
 
     @staticmethod
     def is_code_file(filename: str) -> bool:
         """Checks whether pygment & tree_sitter can parse the file as code."""
-        language = CodeChunker._get_language_from_filename(filename)
+        language = CodeFileChunker._get_language_from_filename(filename)
         return language and language not in ["text only", "None"]
 
     @staticmethod
     def parse_tree(filename: str, content: str) -> List[str]:
         """Parses the code in a file and returns the parse tree."""
-        language = CodeChunker._get_language_from_filename(filename)
+        language = CodeFileChunker._get_language_from_filename(filename)
 
         if not language or language in ["text only", "None"]:
             logging.debug("%s doesn't seem to be a code file.", filename)
@@ -180,8 +185,12 @@ class CodeChunker(Chunker):
             return None
         return tree
 
-    def chunk(self, file_path: str, file_content: str) -> List[Chunk]:
+    def chunk(self, content: Any, metadata: Dict) -> List[Chunk]:
         """Chunks a code file into smaller pieces."""
+        file_content = content
+        file_metadata = metadata
+        file_path = metadata["file_path"]
+
         if not file_content.strip():
             return []
 
@@ -189,33 +198,33 @@ class CodeChunker(Chunker):
         if tree is None:
             return []
 
-        chunks = self._chunk_node(tree.root_node, file_path, file_content)
-        for chunk in chunks:
+        file_chunks = self._chunk_node(tree.root_node, file_content, file_metadata)
+        for chunk in file_chunks:
             # Make sure that the chunk has content and doesn't exceed the max_tokens limit. Otherwise there must be
             # a bug in the code.
-            assert chunk.content
-            size = chunk.num_tokens(self.tokenizer)
-            assert size <= self.max_tokens, f"Chunk size {size} exceeds max_tokens {self.max_tokens}."
+            assert chunk.num_tokens <= self.max_tokens, f"Chunk size {chunk.num_tokens} exceeds max_tokens {self.max_tokens}."
 
-        return chunks
+        return file_chunks
 
 
-class TextChunker(Chunker):
+class TextFileChunker(Chunker):
     """Wrapper around semchunk: https://github.com/umarbutler/semchunk."""
 
     def __init__(self, max_tokens: int):
         self.max_tokens = max_tokens
-
-        tokenizer = tiktoken.get_encoding("cl100k_base")
         self.count_tokens = lambda text: len(tokenizer.encode(text, disallowed_special=()))
 
-    def chunk(self, file_path: str, file_content: str) -> List[Chunk]:
+    def chunk(self, content: Any, metadata: Dict) -> List[Chunk]:
         """Chunks a text file into smaller pieces."""
+        file_content = content
+        file_metadata = metadata
+        file_path = file_metadata["file_path"]
+
         # We need to allocate some tokens for the filename, which is part of the chunk content.
         extra_tokens = self.count_tokens(file_path + "\n\n")
         text_chunks = chunk_via_semchunk(file_content, self.max_tokens - extra_tokens, self.count_tokens)
 
-        chunks = []
+        file_chunks = []
         start = 0
         for text_chunk in text_chunks:
             # This assertion should always be true. Otherwise there's a bug worth finding.
@@ -227,22 +236,25 @@ class TextChunker(Chunker):
                 logging.warning("Couldn't find semchunk in content: %s", text_chunk)
             else:
                 end = start + len(text_chunk)
-                chunks.append(Chunk(file_path, start, end, text_chunk))
+                file_chunks.append(FileChunk(file_content, file_metadata, start, end))
 
             start = end
-        return chunks
+
+        return file_chunks
 
 
-class IPYNBChunker(Chunker):
+class IpynbFileChunker(Chunker):
     """Extracts the python code from a Jupyter notebook, removing all the boilerplate.
 
     Based on https://github.com/GoogleCloudPlatform/generative-ai/blob/main/language/code/code_retrieval_augmented_generation.ipynb
     """
 
-    def __init__(self, code_chunker: CodeChunker):
+    def __init__(self, code_chunker: CodeFileChunker):
         self.code_chunker = code_chunker
 
-    def chunk(self, filename: str, content: str) -> List[Chunk]:
+    def chunk(self, content: Any, metadata: Dict) -> List[Chunk]:
+        filename = metadata["file_path"]
+
         if not filename.lower().endswith(".ipynb"):
             logging.warn("IPYNBChunker is only for .ipynb files.")
             return []
@@ -256,16 +268,25 @@ class IPYNBChunker(Chunker):
         return chunks
 
 
-class UniversalChunker(Chunker):
+class UniversalFileChunker(Chunker):
     """Chunks a file into smaller pieces, regardless of whether it's code or text."""
 
     def __init__(self, max_tokens: int):
-        self.code_chunker = CodeChunker(max_tokens)
-        self.text_chunker = TextChunker(max_tokens)
+        self.code_chunker = CodeFileChunker(max_tokens)
+        self.ipynb_chunker = IpynbFileChunker(self.code_chunker)
+        self.text_chunker = TextFileChunker(max_tokens)
 
-    def chunk(self, file_path: str, file_content: str) -> List[Chunk]:
+    def chunk(self, content: Any, metadata: Dict) -> List[Chunk]:
+        if not "file_path" in metadata:
+            raise ValueError("metadata must contain a 'file_path' key.")
+        file_path = metadata["file_path"]
+
+        # Figure out the appropriate chunker to use.
         if file_path.lower().endswith(".ipynb"):
-            return IPYNBChunker(self.code_chunker).chunk(file_path, file_content)
-        if CodeChunker.is_code_file(file_path):
-            return self.code_chunker.chunk(file_path, file_content)
-        return self.text_chunker.chunk(file_path, file_content)
+            chunker = self.ipynb_chunker
+        if CodeFileChunker.is_code_file(file_path):
+            chunker = self.code_chunker
+        else:
+            chunker = self.text_chunker
+
+        return chunker.chunk(content, metadata)
