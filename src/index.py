@@ -113,7 +113,7 @@ def main():
         parser.error("At most one of --include and --exclude can be specified.")
 
     # Set default values based on other arguments
-    if args.embedder_type is None:
+    if args.embedding_model is None:
         args.embedding_model = "text-embedding-ada-002" if args.embedder_type == "openai" else "hf/e5-base-v2"
     if args.embedding_size is None and args.embedder_type == "openai":
         args.embedding_size = OPENAI_DEFAULT_EMBEDDING_SIZE.get(args.embedding_model)
