@@ -6,8 +6,12 @@ def readfile(filename):
 
 setup(
     name="repo2vec",
-    version="0.1.1",
+    version="0.1.2",
     packages=find_packages(),
+    include_package_data=True,
+    package_data={
+        "repo2vec": ["sample-exclude.txt"],
+    },
     install_requires=open("requirements.txt").readlines() + ["setuptools"],
     entry_points={
         "console_scripts": [

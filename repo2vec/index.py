@@ -13,6 +13,8 @@ from repo2vec.github import GitHubIssuesChunker, GitHubIssuesManager
 from repo2vec.vector_store import build_from_args
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 MAX_TOKENS_PER_CHUNK = 8192  # The ADA embedder from OpenAI has a maximum of 8192 tokens.
 MAX_CHUNKS_PER_BATCH = 2048  # The OpenAI batch embedding API enforces a maximum of 2048 chunks per batch.
