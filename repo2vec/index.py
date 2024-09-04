@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import pkg_resources
 import time
 
 from repo2vec.chunker import UniversalFileChunker
@@ -78,7 +79,7 @@ def main():
     )
     parser.add_argument(
         "--exclude",
-        default="repo2vec/sample-exclude.txt",
+        default=pkg_resources.resource_filename(__name__, "sample-exclude.txt"),
         help="Path to a file containing a list of extensions to exclude. One extension per line.",
     )
     parser.add_argument(

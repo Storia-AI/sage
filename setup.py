@@ -8,7 +8,7 @@ setup(
     name="repo2vec",
     version="0.1.0",
     packages=find_packages(),
-    install_requires=open("requirements.txt").readlines(),
+    install_requires=open("requirements.txt").readlines() + ["setuptools"],
     entry_points={
         "console_scripts": [
             "index=repo2vec.index:main",
