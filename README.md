@@ -46,7 +46,6 @@ We currently support two options for indexing the codebase:
 
 2. **Using external providers** (OpenAI for embeddings and [Pinecone](https://www.pinecone.io/) for the vector store). To index your codebase, run:
     ```
-
     export OPENAI_API_KEY=...
     export PINECONE_API_KEY=...
 
