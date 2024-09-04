@@ -12,8 +12,8 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-import vector_store
-from llm import build_llm_via_langchain
+import repo2vec.vector_store as vector_store
+from repo2vec.llm import build_llm_via_langchain
 
 load_dotenv()
 
@@ -67,7 +67,7 @@ def append_sources_to_response(response):
     return response["answer"] + "\n\nSources:\n" + "\n".join(urls)
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="UI to chat with your codebase")
     parser.add_argument("repo_id", help="The ID of the repository to index")
     parser.add_argument("--llm-provider", default="anthropic", choices=["openai", "anthropic", "ollama"])
@@ -116,3 +116,6 @@ if __name__ == "__main__":
         description=f"Code sage for your repo: {args.repo_id}",
         examples=["What does this repo do?", "Give me some sample code."],
     ).launch(share=args.share)
+
+if __name__ == "__main__":
+    main()

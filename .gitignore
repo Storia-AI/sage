@@ -1,4 +1,6 @@
 .env
 __pycache__
 *.cpython.*
+build/
 repos/
+repo2vec.egg-info/

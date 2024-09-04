@@ -5,6 +5,7 @@
 .bmp
 .crt
 .css
+.csv
 .dat
 .db
 .duckdb

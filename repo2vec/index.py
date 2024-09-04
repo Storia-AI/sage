@@ -2,15 +2,19 @@
 
 import argparse
 import logging
+import os
+import pkg_resources
 import time
 
-from chunker import UniversalFileChunker
-from data_manager import GitHubRepoManager
-from embedder import build_batch_embedder_from_flags
-from github import GitHubIssuesChunker, GitHubIssuesManager
-from vector_store import build_from_args
+from repo2vec.chunker import UniversalFileChunker
+from repo2vec.data_manager import GitHubRepoManager
+from repo2vec.embedder import build_batch_embedder_from_flags
+from repo2vec.github import GitHubIssuesChunker, GitHubIssuesManager
+from repo2vec.vector_store import build_from_args
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 MAX_TOKENS_PER_CHUNK = 8192  # The ADA embedder from OpenAI has a maximum of 8192 tokens.
 MAX_CHUNKS_PER_BATCH = 2048  # The OpenAI batch embedding API enforces a maximum of 2048 chunks per batch.
@@ -77,7 +81,7 @@ def main():
     )
     parser.add_argument(
         "--exclude",
-        default="src/sample-exclude.txt",
+        default=pkg_resources.resource_filename(__name__, "sample-exclude.txt"),
         help="Path to a file containing a list of extensions to exclude. One extension per line.",
     )
     parser.add_argument(
@@ -102,8 +106,9 @@ def main():
     parser.add_argument(
         "--index-issues",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Whether to index GitHub issues. At least one of --index-repo and --index-issues must be True.",
+        default=False,
+        help="Whether to index GitHub issues. At least one of --index-repo and --index-issues must be True. When "
+        "--index-issues is set, you must also set a GITHUB_TOKEN environment variable.",
     )
     args = parser.parse_args()
 
@@ -134,6 +139,14 @@ def main():
     if args.embedding_size is None and args.embedder_type == "openai":
         args.embedding_size = OPENAI_DEFAULT_EMBEDDING_SIZE.get(args.embedding_model)
 
+    # Fail early on missing environment variables.
+    if args.embedder_type == "openai" and not os.getenv("OPENAI_API_KEY"):
+        parser.error("Please set the OPENAI_API_KEY environment variable.")
+    if args.vector_store_type == "pinecone" and not os.getenv("PINECONE_API_KEY"):
+        parser.error("Please set the PINECONE_API_KEY environment variable.")
+    if args.index_issues and not os.getenv("GITHUB_TOKEN"):
+        parser.error("Please set the GITHUB_TOKEN environment variable.")
+
     ######################
     # Step 1: Embeddings #
     ######################
@@ -159,7 +172,6 @@ def main():
 
     # Index the GitHub issues.
     issues_embedder = None
-    assert args.index_issues is True
     if args.index_issues:
         logging.info("Issuing embedding jobs for GitHub issues...")
         issues_manager = GitHubIssuesManager(args.repo_id)
