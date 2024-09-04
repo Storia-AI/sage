@@ -1,4 +1,5 @@
 .env
 __pycache__
 *.cpython.*
+build/
 repos/

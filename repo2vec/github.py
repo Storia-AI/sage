@@ -8,8 +8,8 @@ import logging
 import requests
 import tiktoken
 
-from chunker import Chunk, Chunker
-from data_manager import DataManager
+from repo2vec.chunker import Chunk, Chunker
+from repo2vec.data_manager import DataManager
 
 tokenizer = tiktoken.get_encoding("cl100k_base")
 

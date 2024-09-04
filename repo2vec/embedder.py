@@ -10,8 +10,8 @@ from typing import Dict, Generator, List, Optional, Tuple
 import marqo
 from openai import OpenAI
 
-from chunker import Chunk, Chunker
-from data_manager import DataManager
+from repo2vec.chunker import Chunk, Chunker
+from repo2vec.data_manager import DataManager
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
