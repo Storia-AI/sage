@@ -81,7 +81,6 @@ def main():
     )
     parser.add_argument(
         "--exclude",
-        default=pkg_resources.resource_filename(__name__, "sample-exclude.txt"),
         help="Path to a file containing a list of extensions to exclude. One extension per line.",
     )
     parser.add_argument(
@@ -110,6 +109,14 @@ def main():
         help="Whether to index GitHub issues. At least one of --index-repo and --index-issues must be True. When "
         "--index-issues is set, you must also set a GITHUB_TOKEN environment variable.",
     )
+    parser.add_argument(
+        "--index-issue-comments",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Whether to index the comments of GitHub issues. This is only relevant if --index-issues is set. "
+        "GitHub's API for downloading comments is quite slow. Indexing solely the body of an issue seems to bring most "
+        "of the gains anyway.",
+    )
     args = parser.parse_args()
 
     # Validate embedder and vector store compatibility.
@@ -130,6 +137,8 @@ def main():
         parser.error(f"The maximum number of chunks per job is {MAX_TOKENS_PER_JOB}.")
     if args.include and args.exclude:
         parser.error("At most one of --include and --exclude can be specified.")
+    if not args.include and not args.exclude:
+        args.exclude = pkg_resources.resource_filename(__name__, "sample-exclude.txt")
     if not args.index_repo and not args.index_issues:
         parser.error("At least one of --index-repo and --index-issues must be true.")
 
@@ -174,7 +183,7 @@ def main():
     issues_embedder = None
     if args.index_issues:
         logging.info("Issuing embedding jobs for GitHub issues...")
-        issues_manager = GitHubIssuesManager(args.repo_id)
+        issues_manager = GitHubIssuesManager(args.repo_id, index_comments=args.index_issue_comments)
         issues_manager.download()
         logging.info("Embedding GitHub issues...")
         chunker = GitHubIssuesChunker(max_tokens=args.tokens_per_chunk)

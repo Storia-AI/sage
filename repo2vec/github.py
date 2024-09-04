@@ -46,9 +46,10 @@ class GitHubIssue:
 class GitHubIssuesManager(DataManager):
     """Class to manage the GitHub issues of a particular repository."""
 
-    def __init__(self, repo_id: str, max_issues: int = None):
+    def __init__(self, repo_id: str, index_comments: bool = False, max_issues: int = None):
         super().__init__(dataset_id=repo_id + "/issues")
         self.repo_id = repo_id
+        self.index_comments = index_comments
         self.max_issues = max_issues
         self.access_token = os.getenv("GITHUB_TOKEN")
         if not self.access_token:
@@ -60,7 +61,7 @@ class GitHubIssuesManager(DataManager):
         per_page = min(self.max_issues or 100, 100)  # 100 is maximum per page
         url = f"https://api.github.com/repos/{self.repo_id}/issues?per_page={per_page}"
         while url:
-            print(f"Fetching issues from {url}")
+            logging.info(f"Fetching issues from {url}")
             response = self._get_page_of_issues(url)
             response.raise_for_status()
             for issue in response.json():
@@ -72,7 +73,7 @@ class GitHubIssuesManager(DataManager):
                             title=issue["title"],
                             # When there's no body, issue["body"] is None.
                             body=issue["body"] or "",
-                            comments=self._get_comments(issue["comments_url"]),
+                            comments=self._get_comments(issue["comments_url"]) if self.index_comments else [],
                         )
                     )
             if self.max_issues and len(self.issues) >= self.max_issues:
@@ -125,7 +126,7 @@ class GitHubIssuesManager(DataManager):
                     "X-GitHub-Api-Version": "2022-11-28",
                 },
             )
-        except requests.exceptions.ConnectionTimeout:
+        except requests.exceptions.ConnectTimeout:
             logging.warn(f"Timeout fetching comments from {comments_url}")
             return []
         comments = []
@@ -203,8 +204,22 @@ class GitHubIssuesChunker(Chunker):
 
         chunks = []
 
-        # First, create a chunk for the issue body.
-        issue_body_chunk = IssueChunk(issue, 0, 0)
+        # First, create a chunk for the body of the issue. If it's too long, then truncate it.
+        if len(tokenizer.encode(issue.pretty, disallowed_special=())) > self.max_tokens:
+            title_len = len(tokenizer.encode(issue.title, disallowed_special=()))
+            target_body_len = self.max_tokens - title_len - 20  # 20 for buffer
+            trimmed_body = tokenizer.decode(tokenizer.encode(issue.body, disallowed_special=())[:target_body_len])
+            trimmed_issue = GitHubIssue(
+                url=issue.url,
+                html_url=issue.html_url,
+                title=issue.title,
+                body=trimmed_body,
+                comments=issue.comments,
+            )
+            issue_body_chunk = IssueChunk(trimmed_issue, 0, 0)
+        else:
+            issue_body_chunk = IssueChunk(issue, 0, 0)
+
         chunks.append(issue_body_chunk)
 
         for comment_idx, comment in enumerate(issue.comments):
