@@ -284,7 +284,7 @@ class UniversalFileChunker(Chunker):
         # Figure out the appropriate chunker to use.
         if file_path.lower().endswith(".ipynb"):
             chunker = self.ipynb_chunker
-        if CodeFileChunker.is_code_file(file_path):
+        elif CodeFileChunker.is_code_file(file_path):
             chunker = self.code_chunker
         else:
             chunker = self.text_chunker
