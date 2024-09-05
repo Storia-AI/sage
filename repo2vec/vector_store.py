@@ -86,8 +86,9 @@ class MarqoVectorStore(VectorStore):
         # the result, and instead take the "filename" directly from the result.
         def patched_method(self, results):
             documents: List[Document] = []
-            for res in results["hits"]:
-                documents.append(Document(page_content=res["text"], metadata={"filename": res["filename"]}))
+            for result in results["hits"]:
+                content = result.pop("text")
+                documents.append(Document(page_content=content, metadata=result))
             return documents
 
         vectorstore._construct_documents_from_results_without_score = patched_method.__get__(
