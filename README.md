@@ -1,11 +1,11 @@
-# What is this?
-
-*TL;DR*: `repo2vec` is a simple-to-use, modular library enabling you to chat with any public or private codebase.
-
-<p align="center">
-  <img src="assets/chat_screenshot.png" alt="screenshot" style="max-height: 500px;">
-  <i>Our chat window, letting you chat with your codebase in 2 commands 🚀</i>
-</p>
+<div align="center">
+  <h1 align="center">repo2vec</h1>
+  <p align="center">An open-source pair programmer for chatting with any codebase.</p>
+  <figure>
+    <img src="assets/chat_screenshot2.png" alt="screenshot" style="max-height: 500px; border: 1px solid black;">
+    <figcaption align="center" style="font-size: smaller;">Our chat window, showing a conversation with the Transformers library. 🚀</figcaption>
+  </figure>
+</div>
 
 # Getting started
 
@@ -98,7 +98,7 @@ To get a public URL for your chat app, set `--share=true`.
 </details>
 
 ## Additional features
-- **Control which files get indexed** by providing text files with one extension per line.
+- **Control which files get indexed** based on their extension. You can whitelist or blacklist extensions by passing a file with one extension per line (in the format `.ext`):
     - To only index a whitelist of files:
         ```
         index ... --include=/path/to/extensions/file
@@ -110,7 +110,7 @@ To get a public URL for your chat app, set `--share=true`.
 - **Index open GitHub issues** (remember to `export GITHUB_TOKEN=...`):
     - To index GitHub issues without comments:
         ```
-        index ... --index-issues`
+        index ... --index-issues
         ```
     - To index GitHub issues with comments:
         ```
