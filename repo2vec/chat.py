@@ -73,7 +73,7 @@ def main():
     parser.add_argument("--llm-provider", default="anthropic", choices=["openai", "anthropic", "ollama"])
     parser.add_argument(
         "--llm-model",
-        help="The LLM name. Must be supported by the provider specified via --llm_provider.",
+        help="The LLM name. Must be supported by the provider specified via --llm-provider.",
     )
     parser.add_argument("--vector-store-type", default="pinecone", choices=["pinecone", "marqo"])
     parser.add_argument("--index-name", required=True, help="Vector store index name")

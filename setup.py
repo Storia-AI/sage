@@ -6,7 +6,7 @@ def readfile(filename):
 
 setup(
     name="repo2vec",
-    version="0.1.5",
+    version="0.1.6",
     packages=find_packages(),
     include_package_data=True,
     package_data={
@@ -15,8 +15,8 @@ setup(
     install_requires=open("requirements.txt").readlines() + ["setuptools"],
     entry_points={
         "console_scripts": [
-            "index=repo2vec.index:main",
-            "chat=repo2vec.chat:main",
+            "r2v-index=repo2vec.index:main",
+            "r2v-chat=repo2vec.chat:main",
         ],
     },
     author="Julia Turc & Mihail Eric / Storia AI",
