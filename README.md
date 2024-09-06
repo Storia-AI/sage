@@ -68,14 +68,14 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 <summary><strong>:computer: Running locally</strong></summary>
 <p>To index the codebase:</p>
 
-    index github-repo-name \  # e.g. Storia-AI/repo2vec
+    r2v-index github-repo-name \  # e.g. Storia-AI/repo2vec
         --embedder-type=marqo \
         --vector-store-type=marqo \
         --index-name=your-index-name
 
 <p> To chat with your codebase:</p>
 
-    chat github-repo-name \
+    r2v-chat github-repo-name \
         --vector-store-type=marqo \
         --index-name=your-index-name \
         --llm-provider=ollama \
@@ -86,14 +86,14 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 <summary><strong>:cloud: Using external providers</strong></summary>
 <p>To index the codebase:</p>
 
-    index github-repo-name \  # e.g. Storia-AI/repo2vec
+    r2v-index github-repo-name \  # e.g. Storia-AI/repo2vec
         --embedder-type=openai \
         --vector-store-type=pinecone \
         --index-name=your-index-name
 
 <p> To chat with your codebase:</p>
 
-    chat github-repo-name \
+    r2v-chat github-repo-name \
         --vector-store-type=pinecone \
         --index-name=your-index-name \
         --llm-provider=openai \
@@ -108,32 +108,32 @@ To get a public URL for your chat app, set `--share=true`.
   - To only index a whitelist of files:
 
         ```
-        index ... --include=/path/to/extensions/file
+        r2v-index ... --include=/path/to/extensions/file
         ```
 
   - To index all code except a blacklist of files:
 
         ```
-        index ... --exclude=/path/to/extensions/file
+        r2v-index ... --exclude=/path/to/extensions/file
         ```
 
 - **Index open GitHub issues** (remember to `export GITHUB_TOKEN=...`):
   - To index GitHub issues without comments:
 
         ```
-        index ... --index-issues
+        r2v-index ... --index-issues
         ```
 
   - To index GitHub issues with comments:
 
         ```
-        index ... --index-issues --index-issue-comments
+        r2v-index ... --index-issues --index-issue-comments
         ```
 
   - To index GitHub issues, but not the codebase:
 
         ```
-        index ... --index-issues --no-index-repo
+        r2v-index ... --index-issues --no-index-repo
         ```
 
 # Why chat with a codebase?
@@ -152,6 +152,7 @@ Features:
 
 # Changelog
 
+- 2024-09-06: Updated command names to `r2v-index` and `r2v-chat` to avoid clash with local utilities.
 - 2024-09-03: `repo2vec` is now available on pypi.
 - 2024-09-03: Support for indexing GitHub issues.
 - 2024-08-30: Support for running everything locally (Marqo for embeddings, Ollama for LLMs).
