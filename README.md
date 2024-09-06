@@ -14,6 +14,7 @@
 To install the library, simply run `pip install repo2vec`!
 
 ## Prerequisites
+
 `repo2vec` performs two steps:
 
 1. Indexes your codebase (requiring an embdder and a vector store)
@@ -23,6 +24,7 @@ To install the library, simply run `pip install repo2vec`!
 <summary><strong>:computer: Running locally</strong></summary>
 
 1. To index the codebase locally, we use the open-source project <a href="https://github.com/marqo-ai/marqo">Marqo</a>, which is both an embedder and a vector store. To bring up a Marqo instance:
+
     ```
     docker rm -f marqo
     docker pull marqoai/marqo:latest
@@ -33,6 +35,7 @@ To install the library, simply run `pip install repo2vec`!
 
     - Head over to [ollama.com](https://ollama.com) to download the appropriate binary for your machine.
     - Pull the desired model, e.g. `ollama pull llama3.1`.
+
 </details>
 
 <details>
@@ -50,6 +53,7 @@ To install the library, simply run `pip install repo2vec`!
     ```
     export ANTHROPIC_API_KEY=...
     ```
+
 </details>
 
 <br>
@@ -59,6 +63,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
     export GITHUB_TOKEN=...
 
 ## Running it
+
 <details open>
 <summary><strong>:computer: Running locally</strong></summary>
 <p>To index the codebase:</p>
@@ -77,7 +82,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
         --llm-model=llama3.1
 </details>
 
-<details open>
+<details>
 <summary><strong>:cloud: Using external providers</strong></summary>
 <p>To index the codebase:</p>
 
@@ -98,25 +103,35 @@ To get a public URL for your chat app, set `--share=true`.
 </details>
 
 ## Additional features
+
 - **Control which files get indexed** based on their extension. You can whitelist or blacklist extensions by passing a file with one extension per line (in the format `.ext`):
-    - To only index a whitelist of files:
+  - To only index a whitelist of files:
+
         ```
         index ... --include=/path/to/extensions/file
         ```
-    - To index all code except a blacklist of files:
+
+  - To index all code except a blacklist of files:
+
         ```
         index ... --exclude=/path/to/extensions/file
         ```
+
 - **Index open GitHub issues** (remember to `export GITHUB_TOKEN=...`):
-    - To index GitHub issues without comments:
+  - To index GitHub issues without comments:
+
         ```
         index ... --index-issues
         ```
-    - To index GitHub issues with comments:
+
+  - To index GitHub issues with comments:
+
         ```
         index ... --index-issues --index-issue-comments
         ```
-    - To index GitHub issues, but not the codebase:
+
+  - To index GitHub issues, but not the codebase:
+
         ```
         index ... --index-issues --no-index-repo
         ```
