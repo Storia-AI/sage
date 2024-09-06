@@ -77,7 +77,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
         --vector-store-type=marqo \
         --index-name=your-index-name
 
-<p> To chat with your codebase, run this command. This should take around a minute, depending on the repo size.</p>
+<p> To chat with your codebase, run this command.</p>
 
     # any repo in the format ORG_NAME/REPO_NAME
     r2v-chat Storia-AI/repo2vec \
