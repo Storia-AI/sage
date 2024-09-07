@@ -31,9 +31,12 @@ To install the library, simply run `pip install repo2vec`!
     docker run --name marqo -it -p 8882:8882 marqoai/marqo:latest
     ```
 
+    This will open a persistent Marqo console window. This should take around 2-3 minutes on a fresh install.
+
 2. To chat with an LLM locally, we use <a href="https://github.com/ollama/ollama">Ollama</a>:
 
     - Head over to [ollama.com](https://ollama.com) to download the appropriate binary for your machine.
+    - Open a new terminal window
     - Pull the desired model, e.g. `ollama pull llama3.1`.
 
 </details>
@@ -66,16 +69,18 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 <details open>
 <summary><strong>:computer: Running locally</strong></summary>
-<p>To index the codebase:</p>
+<p>To index the codebase, run this command. This should take a few minutes, depending on the repo size.</p>
 
-    r2v-index github-repo-name \  # e.g. Storia-AI/repo2vec
+    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
+    r2v-index Storia-AI/repo2vec \
         --embedder-type=marqo \
         --vector-store-type=marqo \
         --index-name=your-index-name
 
-<p> To chat with your codebase:</p>
+<p> To chat with your codebase, run this command:</p>
 
-    r2v-chat github-repo-name \
+    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
+    r2v-chat Storia-AI/repo2vec \
         --vector-store-type=marqo \
         --index-name=your-index-name \
         --llm-provider=ollama \
@@ -84,16 +89,18 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 <details>
 <summary><strong>:cloud: Using external providers</strong></summary>
-<p>To index the codebase:</p>
+<p>To index the codebase, run this command. This should take a few minutes, depending on the repo size.</p>
 
-    r2v-index github-repo-name \  # e.g. Storia-AI/repo2vec
+    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
+    r2v-index Storia-AI/repo2vec \
         --embedder-type=openai \
         --vector-store-type=pinecone \
         --index-name=your-index-name
 
-<p> To chat with your codebase:</p>
+<p> To chat with your codebase, run this command:</p>
 
-    r2v-chat github-repo-name \
+    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
+    r2v-chat Storia-AI/repo2vec \
         --vector-store-type=pinecone \
         --index-name=your-index-name \
         --llm-provider=openai \
