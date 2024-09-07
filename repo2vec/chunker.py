@@ -261,10 +261,13 @@ class IpynbFileChunker(Chunker):
 
         notebook = nbformat.reads(content, as_version=nbformat.NO_CONVERT)
         python_code = "\n".join([cell.source for cell in notebook.cells if cell.cell_type == "code"])
-        chunks = self.code_chunker.chunk(filename.replace(".ipynb", ".py"), python_code)
-        # Change back the filenames to .ipynb.
+
+        tmp_metadata = {"file_path": filename.replace(".ipynb", ".py")}
+        chunks = self.code_chunker.chunk(python_code, tmp_metadata)
+
         for chunk in chunks:
-            chunk.filename = chunk.filename.replace(".py", ".ipynb")
+            # Update filenames back to .ipynb
+            chunk.metadata = metadata
         return chunks
 
 
