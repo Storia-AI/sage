@@ -77,7 +77,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
         --vector-store-type=marqo \
         --index-name=your-index-name
 
-<p> To chat with your codebase, run this command.</p>
+<p> To chat with your codebase, run this command:</p>
 
     # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
     r2v-chat Storia-AI/repo2vec \
@@ -89,7 +89,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 <details>
 <summary><strong>:cloud: Using external providers</strong></summary>
-<p>To index the codebase:</p>
+<p>To index the codebase, run this command. This should take a few minutes, depending on the repo size.</p>
 
     # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
     r2v-index Storia-AI/repo2vec \
@@ -97,7 +97,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
         --vector-store-type=pinecone \
         --index-name=your-index-name
 
-<p> To chat with your codebase:</p>
+<p> To chat with your codebase, run this command:</p>
 
     # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
     r2v-chat Storia-AI/repo2vec \
