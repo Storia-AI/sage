@@ -149,7 +149,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 metadata={},
             )
         except Exception as e:
-            print(f"Failed to create batch job with input_file_id={input_file_id}. Error: {e}")
+            logging.error(f"Failed to create batch job with input_file_id={input_file_id}. Error: {e}")
             return None
 
     @staticmethod

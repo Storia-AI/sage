@@ -30,13 +30,17 @@ class GitHubRepoManager(DataManager):
         self,
         repo_id: str,
         local_dir: str = None,
-        included_extensions: set = None,
-        excluded_extensions: set = None,
+        inclusion_file: str = None,
+        exclusion_file: str = None,
     ):
         """
         Args:
             repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/repo2vec".
             local_dir: The local directory where the repository will be cloned.
+            inclusion_file: A file with a lists of files/directories/extensions to include. Each line must be in one of
+                the following formats: "ext:.my-extension", "file:my-file.py", or "dir:my-directory".
+            exclusion_file: A file with a lists of files/directories/extensions to exclude. Each line must be in one of
+                the following formats: "ext:.my-extension", "file:my-file.py", or "dir:my-directory".
         """
         super().__init__(dataset_id=repo_id)
         self.repo_id = repo_id
@@ -51,8 +55,12 @@ class GitHubRepoManager(DataManager):
             os.makedirs(self.log_dir)
 
         self.access_token = os.getenv("GITHUB_TOKEN")
-        self.included_extensions = included_extensions
-        self.excluded_extensions = excluded_extensions
+
+        if inclusion_file and exclusion_file:
+            raise ValueError("Only one of inclusion_file or exclusion_file should be provided.")
+
+        self.inclusions = self._parse_filter_file(inclusion_file) if inclusion_file else None
+        self.exclusions = self._parse_filter_file(exclusion_file) if exclusion_file else None
 
     @cached_property
     def is_public(self) -> bool:
@@ -101,19 +109,62 @@ class GitHubRepoManager(DataManager):
             return False
         return True
 
+    def _parse_filter_file(self, file_path: str) -> bool:
+        """Parses a file with files/directories/extensions to include/exclude.
+
+        Lines are expected to be in the format:
+        # Comment that will be ignored, or
+        ext:.my-extension, or
+        file:my-file.py, or
+        dir:my-directory
+        """
+        with open(file_path, "r") as f:
+            lines = f.readlines()
+
+        parsed_data = {"ext": [], "file": [], "dir": []}
+        for line in lines:
+            if line.startswith("#"):
+                # This is a comment line.
+                continue
+            key, value = line.strip().split(":")
+            if key in parsed_data:
+                parsed_data[key].append(value)
+            else:
+                logging.error("Unrecognized key in line: %s. Skipping.", line)
+
+        return parsed_data
+
     def _should_include(self, file_path: str) -> bool:
-        """Checks whether the file should be indexed, based on the included and excluded extensions."""
+        """Checks whether the file should be indexed."""
+        # Exclude symlinks.
         if os.path.islink(file_path):
             return False
-        _, extension = os.path.splitext(file_path)
-        extension = extension.lower()
-        if self.included_extensions and extension not in self.included_extensions:
-            return False
-        if self.excluded_extensions and extension in self.excluded_extensions:
-            return False
+
         # Exclude hidden files and directories.
         if any(part.startswith(".") for part in file_path.split(os.path.sep)):
             return False
+
+        if not self.inclusions and not self.exclusions:
+            return True
+
+        # Filter based on file extensions, file names and directory names.
+        _, extension = os.path.splitext(file_path)
+        extension = extension.lower()
+        file_name = os.path.basename(file_path)
+        dirs = os.path.dirname(file_path).split("/")
+
+        if self.inclusions:
+            return (
+                extension in self.inclusions.get("ext", []) or
+                file_name in self.inclusions.get("file", []) or
+                any(d in dirs for d in self.inclusions.get("dir", []))
+            )
+        elif self.exclusions:
+            return (
+                extension not in self.exclusions.get("ext", []) and
+                file_name not in self.exclusions.get("file", []) and
+                all(d not in dirs for d in self.exclusions.get("dir", []))
+            )
         return True
 
     def walk(self) -> Generator[Tuple[Any, Dict], None, None]:
@@ -130,8 +181,10 @@ class GitHubRepoManager(DataManager):
         excluded_log_file = os.path.join(self.log_dir, f"excluded_{repo_name}.txt")
         if os.path.exists(included_log_file):
             os.remove(included_log_file)
+            logging.info("Logging included files at %s", included_log_file)
         if os.path.exists(excluded_log_file):
             os.remove(excluded_log_file)
+            logging.info("Logging excluded files at %s", excluded_log_file)
 
         for root, _, files in os.walk(self.local_path):
             file_paths = [os.path.join(root, file) for file in files]

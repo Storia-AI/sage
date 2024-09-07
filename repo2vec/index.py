@@ -30,11 +30,6 @@ OPENAI_DEFAULT_EMBEDDING_SIZE = {
 }
 
 
-def _read_extensions(path):
-    with open(path, "r") as f:
-        return {line.strip().lower() for line in f}
-
-
 def main():
     parser = argparse.ArgumentParser(description="Batch-embeds a GitHub repository and its issues.")
     parser.add_argument("repo_id", help="The ID of the repository to index")
@@ -163,15 +158,12 @@ def main():
     # Index the repository.
     repo_embedder = None
     if args.index_repo:
-        included_extensions = _read_extensions(args.include) if args.include else None
-        excluded_extensions = _read_extensions(args.exclude) if args.exclude else None
-
         logging.info("Cloning the repository...")
         repo_manager = GitHubRepoManager(
             args.repo_id,
             local_dir=args.local_dir,
-            included_extensions=included_extensions,
-            excluded_extensions=excluded_extensions,
+            inclusion_file=args.include,
+            exclusion_file=args.exclude,
         )
         repo_manager.download()
         logging.info("Embedding the repo...")
