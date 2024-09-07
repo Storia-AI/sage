@@ -70,13 +70,13 @@ def append_sources_to_response(response):
 def main():
     parser = argparse.ArgumentParser(description="UI to chat with your codebase")
     parser.add_argument("repo_id", help="The ID of the repository to index")
-    parser.add_argument("--llm-provider", default="anthropic", choices=["openai", "anthropic", "ollama"])
+    parser.add_argument("--llm-provider", default="ollama", choices=["openai", "anthropic", "ollama"])
     parser.add_argument(
         "--llm-model",
         help="The LLM name. Must be supported by the provider specified via --llm-provider.",
     )
-    parser.add_argument("--vector-store-type", default="pinecone", choices=["pinecone", "marqo"])
-    parser.add_argument("--index-name", required=True, help="Vector store index name")
+    parser.add_argument("--vector-store-type", default="marqo", choices=["pinecone", "marqo"])
+    parser.add_argument("--index-name", help="Vector store index name. Required for Pinecone.")
     parser.add_argument(
         "--marqo-url",
         default="http://localhost:8882",
@@ -89,11 +89,19 @@ def main():
     )
     args = parser.parse_args()
 
+    if not args.index_name:
+        if args.vector_store_type == "marqo":
+            args.index_name = args.repo_id.split("/")[1]
+        elif args.vector_store_type == "pinecone":
+            parser.error("Please specify --index-name for Pinecone.")
+
     if not args.llm_model:
         if args.llm_provider == "openai":
             args.llm_model = "gpt-4"
         elif args.llm_provider == "anthropic":
             args.llm_model = "claude-3-opus-20240229"
+        elif args.llm_provider == "ollama":
+            args.llm_model = "llama3.1"
         else:
             raise ValueError("Please specify --llm_model")
 

@@ -51,6 +51,11 @@ To install the library, simply run `pip install repo2vec`!
     export PINECONE_API_KEY=...
     ```
 
+2. Create a Pinecone index [on their website](https://pinecone.io) and export the name:
+    ```
+    export PINECONE_INDEX_NAME=...
+    ```
+
 2. For chatting with an LLM, we support OpenAI and Anthropic. For the latter, set an additional API key:
 
     ```
@@ -68,80 +73,110 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 ## Running it
 
 <details open>
-<summary><strong>:computer: Running locally</strong></summary>
-<p>To index the codebase, run this command. This should take a few minutes, depending on the repo size.</p>
+<summary><strong>:computer: Run locally</strong></summary>
 
-    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
-    r2v-index Storia-AI/repo2vec \
-        --embedder-type=marqo \
-        --vector-store-type=marqo \
-        --index-name=your-index-name
+1. Select your desired repository:
+    ```
+    export GITHUB_REPO=huggingface/transformers
+    ```
 
-<p> To chat with your codebase, run this command:</p>
+2. Index the repository. This might take a few minutes, depending on its size.
+    ```
+    r2v-index $GITHUB_REPO
+    ```
 
-    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
-    r2v-chat Storia-AI/repo2vec \
-        --vector-store-type=marqo \
-        --index-name=your-index-name \
-        --llm-provider=ollama \
-        --llm-model=llama3.1
+3. Chat with the repository, once it's indexed:
+    ```
+    r2v-chat $GITHUB_REPO
+    ```
+    To get a public URL for your chat app, set `--share=true`.
+
 </details>
 
 <details>
-<summary><strong>:cloud: Using external providers</strong></summary>
-<p>To index the codebase, run this command. This should take a few minutes, depending on the repo size.</p>
+<summary><strong>:cloud: Use external providers</strong></summary>
 
-    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
-    r2v-index Storia-AI/repo2vec \
-        --embedder-type=openai \
+1. Select your desired repository:
+    ```
+    export GITHUB_REPO=huggingface/transformers
+    ```
+
+2. Index the repository. This might take a few minutes, depending on its size.
+    ```
+    r2v-index $GITHUB_REPO \
+        --embedder-type=openai
+        --vector-store=pinecone \
+        --index-name=$PINECONE_INDEX_NAME
+    ```
+
+3. Chat with the repository, once it's indexed:
+    ```
+    r2v-chat $GITHUB_REPO \
         --vector-store-type=pinecone \
-        --index-name=your-index-name
-
-<p> To chat with your codebase, run this command:</p>
-
-    # this can be any GitHub repository in the format ORG_NAME/REPO_NAME
-    r2v-chat Storia-AI/repo2vec \
-        --vector-store-type=pinecone \
-        --index-name=your-index-name \
+        --index-name=$PINECONE_INDEX_NAME \
         --llm-provider=openai \
         --llm-model=gpt-4
-
-To get a public URL for your chat app, set `--share=true`.
+    ```
+    To get a public URL for your chat app, set `--share=true`.
 </details>
 
 ## Additional features
 
-- **Control which files get indexed** based on their extension. You can whitelist or blacklist extensions by passing a file with one extension per line (in the format `.ext`):
-  - To only index a whitelist of files:
+<details>
+<summary><strong>:hammer_and_wrench: Control which files get indexed</strong></summary>
 
-        ```
-        r2v-index ... --include=/path/to/extensions/file
-        ```
+You can specify an inclusion or exclusion file in the following format:
+```
+# This is a comment
+ext:.my-ext-1
+ext:.my-ext-2
+ext:.my-ext-3
+dir:my-dir-1
+dir:my-dir-2
+dir:my-dir-3
+file:my-file-1.md
+file:my-file-2.py
+file:my-file-3.cpp
+```
+where:
+- `ext` specifies a file extension
+- `dir` specifies a directory. This is not a full path. For instance, if you specify `dir:tests` in an exclusion directory, then a file like `/path/to/my/tests/file.py` will be ignored.
+- `file` specifies a file name. This is also not a full path. For instance, if you specify `file:__init__.py`, then a file like `/path/to/my/__init__.py` will be ignored.
 
-  - To index all code except a blacklist of files:
+To specify an inclusion file (i.e. only index the specified files):
+```
+r2v-index $GITHUB_REPO --include=/path/to/inclusion/file
+```
 
-        ```
-        r2v-index ... --exclude=/path/to/extensions/file
-        ```
+To specify an exclusion file (i.e. index all files, except for the ones specified):
+```
+r2v-index $GITHUB_REPO --exclude=/path/to/exclusion/file
+```
+By default, we use the exclusion file [sample-exclude.txt](repo2vec/sample-exclude.txt).
+</details>
 
-- **Index open GitHub issues** (remember to `export GITHUB_TOKEN=...`):
-  - To index GitHub issues without comments:
+<details>
+<summary><strong>:bug: Index open GitHub issues</strong></summary>
+You will need a GitHub token first:
+```
+export GITHUB_TOKEN=...
+```
 
-        ```
-        r2v-index ... --index-issues
-        ```
+To index GitHub issues without comments:
+```
+r2v-index $GITHUB_REPO --index-issues
+```
 
-  - To index GitHub issues with comments:
+To index GitHub issues with comments:
+```
+r2v-index $GITHUB_REPO --index-issues --index-issue-comments
+```
 
-        ```
-        r2v-index ... --index-issues --index-issue-comments
-        ```
-
-  - To index GitHub issues, but not the codebase:
-
-        ```
-        r2v-index ... --index-issues --no-index-repo
-        ```
+To index GitHub issues, but not the codebase:
+```
+r2v-index $GITHUB_REPO --index-issues --no-index-repo
+```
+</details>
 
 # Why chat with a codebase?
 

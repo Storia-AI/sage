@@ -16,9 +16,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-MAX_TOKENS_PER_CHUNK = 8192  # The ADA embedder from OpenAI has a maximum of 8192 tokens.
-MAX_CHUNKS_PER_BATCH = 2048  # The OpenAI batch embedding API enforces a maximum of 2048 chunks per batch.
-MAX_TOKENS_PER_JOB = 3_000_000  # The OpenAI batch embedding API enforces a maximum of 3M tokens processed at once.
+MARQO_MAX_CHUNKS_PER_BATCH = 64
+
+OPENAI_MAX_TOKENS_PER_CHUNK = 8192  # The ADA embedder from OpenAI has a maximum of 8192 tokens.
+OPENAI_MAX_CHUNKS_PER_BATCH = 2048  # The OpenAI batch embedding API enforces a maximum of 2048 chunks per batch.
+OPENAI_MAX_TOKENS_PER_JOB = (
+    3_000_000  # The OpenAI batch embedding API enforces a maximum of 3M tokens processed at once.
+)
 
 # Note that OpenAI embedding models have fixed dimensions, however, taking a slice of them is possible.
 # See "Reducing embedding dimensions" under https://platform.openai.com/docs/guides/embeddings/use-cases and
@@ -33,7 +37,7 @@ OPENAI_DEFAULT_EMBEDDING_SIZE = {
 def main():
     parser = argparse.ArgumentParser(description="Batch-embeds a GitHub repository and its issues.")
     parser.add_argument("repo_id", help="The ID of the repository to index")
-    parser.add_argument("--embedder-type", default="openai", choices=["openai", "marqo"])
+    parser.add_argument("--embedder-type", default="marqo", choices=["openai", "marqo"])
     parser.add_argument(
         "--embedding-model",
         type=str,
@@ -47,7 +51,7 @@ def main():
         help="The embedding size to use for OpenAI text-embedding-3* models. Defaults to 1536 for small and 3072 for "
         "large. Note that no other OpenAI models support a dynamic embedding size, nor do models used with Marqo.",
     )
-    parser.add_argument("--vector-store-type", default="pinecone", choices=["pinecone", "marqo"])
+    parser.add_argument("--vector-store-type", default="marqo", choices=["pinecone", "marqo"])
     parser.add_argument(
         "--local-dir",
         default="repos",
@@ -62,13 +66,14 @@ def main():
     parser.add_argument(
         "--chunks-per-batch",
         type=int,
-        default=2000,
         help="Maximum chunks per batch. We recommend 2000 for the OpenAI embedder. Marqo enforces a limit of 64.",
     )
     parser.add_argument(
         "--index-name",
-        required=True,
-        help="Vector store index name. For Pinecone, make sure to create it with the right embedding size.",
+        default=None,
+        help="Vector store index name. For Marqo, we default it to the repository name. Required for Pinecone, since "
+        "it needs to be created manually on their website. In Pinecone terminology, this is *not* the namespace (which "
+        "we default to the repo ID).",
     )
     parser.add_argument(
         "--include",
@@ -119,29 +124,57 @@ def main():
         parser.error("When using OpenAI embedder, the vector store type must be Pinecone.")
     if args.embedder_type == "marqo" and args.vector_store_type != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
-    if args.embedder_type == "marqo" and args.chunks_per_batch > 64:
-        args.chunks_per_batch = 64
-        logging.warning("Marqo enforces a limit of 64 chunks per batch. Setting --chunks_per_batch to 64.")
+    if args.vector_store_type == "marqo":
+        if not args.index_name:
+            args.index_name = args.repo_id.split("/")[1]
+        if "/" in args.index_name:
+            parser.error("The index name cannot contain slashes when using Marqo as the vector store.")
+    elif args.vector_store_type == "pinecone" and not args.index_name:
+        parser.error(
+            "When using Pinecone as the vector store, you must specify an index name. You can create one on "
+            "the Pinecone website. Make sure to set it the right --embedding-size."
+        )
 
-    # Validate other arguments.
-    if args.tokens_per_chunk > MAX_TOKENS_PER_CHUNK:
-        parser.error(f"The maximum number of tokens per chunk is {MAX_TOKENS_PER_CHUNK}.")
-    if args.chunks_per_batch > MAX_CHUNKS_PER_BATCH:
-        parser.error(f"The maximum number of chunks per batch is {MAX_CHUNKS_PER_BATCH}.")
-    if args.tokens_per_chunk * args.chunks_per_batch >= MAX_TOKENS_PER_JOB:
-        parser.error(f"The maximum number of chunks per job is {MAX_TOKENS_PER_JOB}.")
+    # Validate embedder parameters.
+    if args.embedder_type == "marqo":
+        if args.embedding_model is None:
+            args.embedding_model = "hf/e5-base-v2"
+        if args.chunks_per_batch is None:
+            args.chunks_per_batch = MARQO_MAX_CHUNKS_PER_BATCH
+        elif args.chunks_per_batch > MARQO_MAX_CHUNKS_PER_BATCH:
+            args.chunks_per_batch = MARQO_MAX_CHUNKS_PER_BATCH
+            logging.warning(
+                f"Marqo enforces a limit of {MARQO_MAX_CHUNKS_PER_BATCH} chunks per batch. "
+                "Overwriting --chunks_per_batch."
+            )
+    elif args.embedder_type == "openai":
+        if args.tokens_per_chunk > OPENAI_MAX_TOKENS_PER_CHUNK:
+            args.tokens_per_chunk = OPENAI_MAX_TOKENS_PER_CHUNK
+            logging.warning(
+                f"OpenAI enforces a limit of {OPENAI_MAX_TOKENS_PER_CHUNK} tokens per chunk. "
+                "Overwriting --tokens_per_chunk."
+            )
+        if args.chunks_per_batch is None:
+            args.chunks_per_batch = 2000
+        elif args.chunks_per_batch > OPENAI_MAX_CHUNKS_PER_BATCH:
+            args.chunks_per_batch = OPENAI_MAX_CHUNKS_PER_BATCH
+            logging.warning(
+                f"OpenAI enforces a limit of {OPENAI_MAX_CHUNKS_PER_BATCH} chunks per batch. "
+                "Overwriting --chunks_per_batch."
+            )
+        if args.tokens_per_chunk * args.chunks_per_batch >= OPENAI_MAX_TOKENS_PER_JOB:
+            parser.error(f"The maximum number of chunks per job is {OPENAI_MAX_TOKENS_PER_JOB}.")
+        if args.embedding_model is None:
+            args.embedding_model = "text-embedding-ada-002"
+        if args.embedding_size is None:
+            args.embedding_size = OPENAI_DEFAULT_EMBEDDING_SIZE.get(args.embedding_model)
+
     if args.include and args.exclude:
         parser.error("At most one of --include and --exclude can be specified.")
     if not args.include and not args.exclude:
         args.exclude = pkg_resources.resource_filename(__name__, "sample-exclude.txt")
     if not args.index_repo and not args.index_issues:
         parser.error("At least one of --index-repo and --index-issues must be true.")
-
-    # Set default values based on other arguments
-    if args.embedding_model is None:
-        args.embedding_model = "text-embedding-ada-002" if args.embedder_type == "openai" else "hf/e5-base-v2"
-    if args.embedding_size is None and args.embedder_type == "openai":
-        args.embedding_size = OPENAI_DEFAULT_EMBEDDING_SIZE.get(args.embedding_model)
 
     # Fail early on missing environment variables.
     if args.embedder_type == "openai" and not os.getenv("OPENAI_API_KEY"):
