@@ -8,7 +8,7 @@ def readfile(filename):
 
 setup(
     name="repo2vec",
-    version="0.1.6",
+    version="0.1.7",
     packages=find_packages(),
     include_package_data=True,
     package_data={
