@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Generator, List, Tuple
 
 import marqo
-from langchain_community.vectorstores import Marqo, Pinecone as LangChainPinecone
+from langchain_community.vectorstores import Marqo
+from langchain_community.vectorstores import Pinecone as LangChainPinecone
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from pinecone import Pinecone

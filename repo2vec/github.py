@@ -1,10 +1,10 @@
 """GitHub-specific implementations for DataManager and Chunker."""
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, Generator, List, Tuple
 
-import logging
 import requests
 import tiktoken
 
@@ -234,7 +234,8 @@ class GitHubIssuesChunker(Chunker):
                         issue=issue,
                         start_comment=comment_idx,
                         end_comment=comment_idx + 1,
-                    ))
+                    )
+                )
             else:
                 # Add the comment to the existing chunk.
                 chunks[-1].end_comment = comment_idx + 1

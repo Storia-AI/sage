@@ -1,8 +1,10 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
+
 
 def readfile(filename):
-    with open(filename, 'r+') as f:
+    with open(filename, "r+") as f:
         return f.read()
+
 
 setup(
     name="repo2vec",
@@ -30,5 +32,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.9',
+    python_requires=">=3.9",
 )

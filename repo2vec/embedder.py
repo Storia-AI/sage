@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from abc import ABC, abstractmethod
 from collections import Counter
 from typing import Dict, Generator, List, Optional, Tuple
@@ -43,18 +44,14 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         self.local_dir = local_dir
         self.embedding_model = embedding_model
         self.embedding_size = embedding_size
-        # IDs issued by OpenAI for each batch job mapped to metadata about the chunks.
-        self.openai_batch_ids = {}
         self.client = OpenAI()
 
-    def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
-        """Issues batch embedding jobs for the entire dataset."""
-        if self.openai_batch_ids:
-            raise ValueError("Embeddings are in progress.")
-
+    def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None) -> str:
+        """Issues batch embedding jobs for the entire dataset. Returns the filename containing the job IDs."""
         batch = []
+        batch_ids = {}  # job_id -> metadata
         chunk_count = 0
-        dataset_name = self.data_manager.dataset_id.split("/")[-1]
+        dataset_name = self.data_manager.dataset_id.replace("/", "_")
 
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
@@ -64,41 +61,58 @@ class OpenAIBatchEmbedder(BatchEmbedder):
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
                     sub_batch = batch[i : i + chunks_per_batch]
-                    openai_batch_id = self._issue_job_for_chunks(
-                        sub_batch, batch_id=f"{dataset_name}/{len(self.openai_batch_ids)}"
-                    )
-                    self.openai_batch_ids[openai_batch_id] = [chunk.metadata for chunk in sub_batch]
-                    if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
+                    openai_batch_id = self._issue_job_for_chunks(sub_batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
+                    batch_ids[openai_batch_id] = [chunk.metadata for chunk in sub_batch]
+                    if max_embedding_jobs and len(batch_ids) >= max_embedding_jobs:
                         logging.info("Reached the maximum number of embedding jobs. Stopping.")
                         return
                 batch = []
 
         # Finally, commit the last batch.
         if batch:
-            openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{dataset_name}/{len(self.openai_batch_ids)}")
-            self.openai_batch_ids[openai_batch_id] = [chunk.metadata for chunk in batch]
-        logging.info("Issued %d jobs for %d chunks.", len(self.openai_batch_ids), chunk_count)
+            openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
+            batch_ids[openai_batch_id] = [chunk.metadata for chunk in batch]
+        logging.info("Issued %d jobs for %d chunks.", len(batch_ids), chunk_count)
 
-        # Save the job IDs to a file, just in case this script is terminated by mistake.
-        metadata_file = os.path.join(self.local_dir, "openai_batch_ids.json")
+        timestamp = int(time.time())
+        metadata_file = os.path.join(self.local_dir, f"{dataset_name}_openai_batch_ids_{timestamp}.json")
         with open(metadata_file, "w") as f:
-            json.dump(self.openai_batch_ids, f)
+            json.dump(batch_ids, f)
         logging.info("Job metadata saved at %s", metadata_file)
+        return metadata_file
 
-    def embeddings_are_ready(self) -> bool:
-        """Checks whether the embeddings jobs are done (either completed or failed)."""
-        if not self.openai_batch_ids:
-            raise ValueError("No embeddings in progress.")
-        job_ids = self.openai_batch_ids.keys()
+    def embeddings_are_ready(self, metadata_file: str) -> bool:
+        """Checks whether the embeddings jobs are done (either completed or failed).
+
+        Args:
+            metadata_file: Path to the file containing the job metadata (output of self.embed_dataset).
+        """
+        with open(metadata_file, "r") as f:
+            batch_ids = json.load(f)
+
+        job_ids = batch_ids.keys()
         statuses = [self.client.batches.retrieve(job_id.strip()) for job_id in job_ids]
         are_ready = all(status.status in ["completed", "failed"] for status in statuses)
         status_counts = Counter(status.status for status in statuses)
         logging.info("Job statuses: %s", status_counts)
         return are_ready
 
-    def download_embeddings(self) -> Generator[Vector, None, None]:
-        """Yield a (chunk_metadata, embedding) pair for each chunk in the dataset."""
-        job_ids = self.openai_batch_ids.keys()
+    def download_embeddings(
+        self, metadata_file: str, store_file_chunk_content: bool = True
+    ) -> Generator[Vector, None, None]:
+        """Yields a (chunk_metadata, embedding) pair for each chunk in the dataset.
+
+        Args:
+            metadata_file: Path to the file containing the job metadata (output of self.embed_dataset).
+            store_file_chunk_content: Whether to store the text content in the metadata for file chunks. Set this to
+                False if you want to save space in the vector store. After retrieval, the content of a file chunk can be
+                reconstructed based on the file_path, start_byte and end_byte fields in the metadata. This will not
+                affect other types of chunks (e.g. GitHub issues) for which the content is harder to reconstruct.
+        """
+        with open(metadata_file, "r") as f:
+            batch_ids = json.load(f)
+
+        job_ids = batch_ids.keys()
         statuses = [self.client.batches.retrieve(job_id.strip()) for job_id in job_ids]
 
         for idx, status in enumerate(statuses):
@@ -111,7 +125,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                 logging.error("Job %s failed with error: %s", status.id, error.text)
                 continue
 
-            batch_metadata = self.openai_batch_ids[status.id]
+            batch_metadata = batch_ids[status.id]
             file_response = self.client.files.content(status.output_file_id)
             data = json.loads(file_response.text)["response"]["body"]["data"]
             logging.info("Job %s generated %d embeddings.", status.id, len(data))
@@ -119,6 +133,13 @@ class OpenAIBatchEmbedder(BatchEmbedder):
             for datum in data:
                 idx = int(datum["index"])
                 metadata = batch_metadata[idx]
+                if (
+                    not store_file_chunk_content
+                    and "file_path" in metadata
+                    and "start_byte" in metadata
+                    and "end_byte" in metadata
+                ):
+                    metadata.pop("text", None)
                 embedding = datum["embedding"]
                 yield (metadata, embedding)
 
@@ -206,6 +227,7 @@ class MarqoEmbedder(BatchEmbedder):
 
         chunk_count = 0
         batch = []
+        job_count = 0
 
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
@@ -220,8 +242,9 @@ class MarqoEmbedder(BatchEmbedder):
                         documents=[chunk.metadata for chunk in sub_batch],
                         tensor_fields=["text"],
                     )
+                    job_count += 1
 
-                    if max_embedding_jobs and len(self.openai_batch_ids) >= max_embedding_jobs:
+                    if max_embedding_jobs and job_count >= max_embedding_jobs:
                         logging.info("Reached the maximum number of embedding jobs. Stopping.")
                         return
                 batch = []

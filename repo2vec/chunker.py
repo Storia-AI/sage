@@ -31,7 +31,7 @@ class Chunk:
 class FileChunk(Chunk):
     """A chunk of code or text extracted from a file in the repository."""
 
-    file_content: str    # The content of the entire file, not just this chunk.
+    file_content: str  # The content of the entire file, not just this chunk.
     file_metadata: Dict  # Metadata of the entire file, not just this chunk.
     start_byte: int
     end_byte: int
@@ -57,6 +57,7 @@ class FileChunk(Chunk):
             "id": f"{filename_ascii}_{self.start_byte}_{self.end_byte}",
             "start_byte": self.start_byte,
             "end_byte": self.end_byte,
+            "length": self.end_byte - self.start_byte,
             # Note to developer: When choosing a large chunk size, you might exceed the vector store's metadata
             # size limit. In that case, you can simply store the start/end bytes above, and fetch the content
             # directly from the repository when needed.
@@ -202,7 +203,9 @@ class CodeFileChunker(Chunker):
         for chunk in file_chunks:
             # Make sure that the chunk has content and doesn't exceed the max_tokens limit. Otherwise there must be
             # a bug in the code.
-            assert chunk.num_tokens <= self.max_tokens, f"Chunk size {chunk.num_tokens} exceeds max_tokens {self.max_tokens}."
+            assert (
+                chunk.num_tokens <= self.max_tokens
+            ), f"Chunk size {chunk.num_tokens} exceeds max_tokens {self.max_tokens}."
 
         return file_chunks
 

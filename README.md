@@ -104,7 +104,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
     r2v-index $GITHUB_REPO \
-        --embedder-type=openai
+        --embedder-type=openai \
         --vector-store=pinecone \
         --index-name=$PINECONE_INDEX_NAME
     ```

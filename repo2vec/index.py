@@ -3,8 +3,9 @@
 import argparse
 import logging
 import os
-import pkg_resources
 import time
+
+import pkg_resources
 
 from repo2vec.chunker import UniversalFileChunker
 from repo2vec.data_manager import GitHubRepoManager
@@ -202,7 +203,7 @@ def main():
         logging.info("Embedding the repo...")
         chunker = UniversalFileChunker(max_tokens=args.tokens_per_chunk)
         repo_embedder = build_batch_embedder_from_flags(repo_manager, chunker, args)
-        repo_embedder.embed_dataset(args.chunks_per_batch, args.max_embedding_jobs)
+        repo_jobs_file = repo_embedder.embed_dataset(args.chunks_per_batch, args.max_embedding_jobs)
 
     # Index the GitHub issues.
     issues_embedder = None
@@ -213,7 +214,7 @@ def main():
         logging.info("Embedding GitHub issues...")
         chunker = GitHubIssuesChunker(max_tokens=args.tokens_per_chunk)
         issues_embedder = build_batch_embedder_from_flags(issues_manager, chunker, args)
-        issues_embedder.embed_dataset(args.chunks_per_batch, args.max_embedding_jobs)
+        issues_jobs_file = issues_embedder.embed_dataset(args.chunks_per_batch, args.max_embedding_jobs)
 
     ########################
     # Step 2: Vector Store #
@@ -226,25 +227,25 @@ def main():
 
     if repo_embedder is not None:
         logging.info("Waiting for repo embeddings to be ready...")
-        while not repo_embedder.embeddings_are_ready():
+        while not repo_embedder.embeddings_are_ready(repo_jobs_file):
             logging.info("Sleeping for 30 seconds...")
             time.sleep(30)
 
         logging.info("Moving embeddings to the repo vector store...")
         repo_vector_store = build_from_args(args)
         repo_vector_store.ensure_exists()
-        repo_vector_store.upsert(repo_embedder.download_embeddings())
+        repo_vector_store.upsert(repo_embedder.download_embeddings(repo_jobs_file))
 
     if issues_embedder is not None:
         logging.info("Waiting for issue embeddings to be ready...")
-        while not issues_embedder.embeddings_are_ready():
+        while not issues_embedder.embeddings_are_ready(issues_jobs_file):
             logging.info("Sleeping for 30 seconds...")
             time.sleep(30)
 
         logging.info("Moving embeddings to the issues vector store...")
         issues_vector_store = build_from_args(args)
         issues_vector_store.ensure_exists()
-        issues_vector_store.upsert(issues_embedder.download_embeddings())
+        issues_vector_store.upsert(issues_embedder.download_embeddings(issues_jobs_file))
 
     logging.info("Done!")
 

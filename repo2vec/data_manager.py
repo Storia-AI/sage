@@ -155,15 +155,15 @@ class GitHubRepoManager(DataManager):
 
         if self.inclusions:
             return (
-                extension in self.inclusions.get("ext", []) or
-                file_name in self.inclusions.get("file", []) or
-                any(d in dirs for d in self.inclusions.get("dir", []))
+                extension in self.inclusions.get("ext", [])
+                or file_name in self.inclusions.get("file", [])
+                or any(d in dirs for d in self.inclusions.get("dir", []))
             )
         elif self.exclusions:
             return (
-                extension not in self.exclusions.get("ext", []) and
-                file_name not in self.exclusions.get("file", []) and
-                all(d not in dirs for d in self.exclusions.get("dir", []))
+                extension not in self.exclusions.get("ext", [])
+                and file_name not in self.exclusions.get("file", [])
+                and all(d not in dirs for d in self.exclusions.get("dir", []))
             )
         return True
 
