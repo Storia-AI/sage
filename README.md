@@ -13,6 +13,8 @@
 
 To install the library, simply run `pip install repo2vec`!
 
+:exclamation: **Please make sure you have the latest version installed (as indicated [here](https://github.com/Storia-AI/repo2vec/blob/ca8ff43b2993ab0da3f0b807513cb4e3f7b0955f/setup.py#L11)). We're under rapid development and older versions quickly become obsolete.** To check your latest version, you can run `pip list | grep repo2vec`.
+
 ## Prerequisites
 
 `repo2vec` performs two steps:
