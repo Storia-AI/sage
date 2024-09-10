@@ -1,6 +1,7 @@
 """Chunker abstraction and implementations."""
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
@@ -104,6 +105,11 @@ class CodeFileChunker(Chunker):
         """Returns a canonical name for the language of the file, based on its extension.
         Returns None if the language is unknown to the pygments lexer.
         """
+        # pygments doesn't recognize .tsx files and returns None. So we need to special-case them.
+        extension = os.path.splitext(filename)[1]
+        if extension == ".tsx":
+            return "tsx"
+
         try:
             lexer = pygments.lexers.get_lexer_for_filename(filename)
             return lexer.name.lower()
@@ -162,7 +168,10 @@ class CodeFileChunker(Chunker):
     def is_code_file(filename: str) -> bool:
         """Checks whether pygment & tree_sitter can parse the file as code."""
         language = CodeFileChunker._get_language_from_filename(filename)
-        return language and language not in ["text only", "None"]
+        # tree-sitter-language-pack crashes on TypeScript files. We'll wait for a bit to see if the issue gets
+        # resolved, otherwise we'll have to clone and fix the library.
+        # See https://github.com/Goldziher/tree-sitter-language-pack/issues/5
+        return language and language not in ["text only", "None", "typescript", "tsx"]
 
     @staticmethod
     def parse_tree(filename: str, content: str) -> List[str]:
@@ -173,10 +182,20 @@ class CodeFileChunker(Chunker):
             logging.debug("%s doesn't seem to be a code file.", filename)
             return None
 
+        if language in ["typescript", "tsx"]:
+            # tree-sitter-language-pack crashes on TypeScript files. We'll wait for a bit to see if the issue gets
+            # resolved, otherwise we'll have to clone and fix the library.
+            # See https://github.com/Goldziher/tree-sitter-language-pack/issues/5
+            return None
+
         try:
             parser = get_parser(language)
         except LookupError:
             logging.debug("%s doesn't seem to be a code file.", filename)
+            return None
+        # This should never happen unless there's a bug in the code, but we'd rather not crash.
+        except Exception as e:
+            logging.warn("Failed to get parser for %s: %s", filename, e)
             return None
 
         tree = parser.parse(bytes(content, "utf8"))
