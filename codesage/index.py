@@ -7,11 +7,11 @@ import time
 
 import pkg_resources
 
-from repo2vec.chunker import UniversalFileChunker
-from repo2vec.data_manager import GitHubRepoManager
-from repo2vec.embedder import build_batch_embedder_from_flags
-from repo2vec.github import GitHubIssuesChunker, GitHubIssuesManager
-from repo2vec.vector_store import build_from_args
+from codesage.chunker import UniversalFileChunker
+from codesage.data_manager import GitHubRepoManager
+from codesage.embedder import build_batch_embedder_from_flags
+from codesage.github import GitHubIssuesChunker, GitHubIssuesManager
+from codesage.vector_store import build_from_args
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()

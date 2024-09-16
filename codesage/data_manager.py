@@ -35,7 +35,7 @@ class GitHubRepoManager(DataManager):
     ):
         """
         Args:
-            repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/repo2vec".
+            repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/codesage".
             local_dir: The local directory where the repository will be cloned.
             inclusion_file: A file with a lists of files/directories/extensions to include. Each line must be in one of
                 the following formats: "ext:.my-extension", "file:my-file.py", or "dir:my-directory".
