@@ -10,10 +10,12 @@ import gradio as gr
 from dotenv import load_dotenv
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.schema import AIMessage, HumanMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CrossEncoderReranker
+from langchain.schema import AIMessage, HumanMessage
 from langchain_cohere import CohereRerank
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 import sage.vector_store as vector_store
 from sage.llm import build_llm_via_langchain
@@ -26,8 +28,16 @@ def build_rag_chain(args):
     llm = build_llm_via_langchain(args.llm_provider, args.llm_model)
 
     retriever = vector_store.build_from_args(args).to_langchain().as_retriever()
-    if args.reranker == "cohere":
-        compressor = CohereRerank(model="rerank-english-v3.0", cohere_api_key=os.environ.get("COHERE_API_KEY"))
+
+    if args.reranker_provider == "none":
+        compressor = None
+    if args.reranker_provider == "huggingface":
+        encoder_model = HuggingFaceCrossEncoder(model_name=args.reranker_model)
+        compressor = CrossEncoderReranker(model=encoder_model, top_n=5)
+    if args.reranker_provider == "cohere":
+        compressor = CohereRerank(model=args.reranker_model, cohere_api_key=os.environ.get("COHERE_API_KEY"), top_n=5)
+
+    if compressor:
         retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=retriever)
 
     # Prompt to contextualize the latest query based on the chat history.
@@ -89,7 +99,12 @@ def main():
         default="http://localhost:8882",
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
-    parser.add_argument("--reranker", default="cohere", choices=["none", "cohere"])
+    parser.add_argument("--reranker-provider", default="huggingface", choices=["none", "huggingface", "cohere"])
+    parser.add_argument(
+        "--reranker-model",
+        help="The reranker model name. When --reranker-provider=huggingface, we suggest choosing a model from the "
+        "SentenceTransformers Cross-Encoders library https://huggingface.co/cross-encoder?sort_models=downloads#models",
+    )
     parser.add_argument(
         "--share",
         default=False,
@@ -112,6 +127,12 @@ def main():
             args.llm_model = "llama3.1"
         else:
             raise ValueError("Please specify --llm_model")
+
+    if not args.reranker_model:
+        if args.reranker_provider == "cohere":
+            args.reranker_model = "rerank-english-v3.0"
+        elif args.reranker_provider == "huggingface":
+            args.reranker_model = "cross-encoder/ms-marco-TinyBERT-L-2-v2"
 
     rag_chain = build_rag_chain(args)
 
