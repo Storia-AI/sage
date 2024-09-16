@@ -1,10 +1,13 @@
 <div align="center">
   <h1 align="center">Code Sage</h1>
   <p align="center">An open-source pair programmer for chatting with any codebase.</p>
-  <figure>
-    <img src="assets/chat_screenshot2.png" alt="screenshot" style="max-height: 500px; border: 1px solid black;">
-    <figcaption align="center" style="font-size: smaller;">Our chat window, showing a conversation with the Transformers library. 🚀</figcaption>
-  </figure>
+  <!-- The <kbd> tag is used as a workaround since GitHub doesn't apply inline image styles -->
+  <kbd>
+    <figure>
+        <img src="assets/chat_screenshot2.png" alt="screenshot" />
+        <figcaption align="center" style="font-size: smaller;">Our chat window, showing a conversation with the Transformers library. 🚀</figcaption>
+    </figure>
+  </kbd>
 </div>
 
 <div align="center">
