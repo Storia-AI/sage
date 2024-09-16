@@ -1,11 +1,10 @@
 <div align="center">
   <h1 align="center">Code Sage</h1>
   <p align="center">An open-source pair programmer for chatting with any codebase.</p>
-  <!-- The <kbd> tag is used as a workaround since GitHub doesn't apply inline image styles -->
-  <kbd>
     <figure>
-        <img src="assets/chat_screenshot2.png" alt="screenshot" />
-        <figcaption align="center" style="font-size: smaller;">Our chat window, showing a conversation with the Transformers library. 🚀</figcaption>
+        <!-- The <kbd>, <sup>, <sub> tags are work-arounds for styling, since GitHub doesn't take into account inline styles. Note it might display awkwardly on other Markdown editors. -->
+        <kbd><img src="assets/chat_screenshot2.png" alt="screenshot" /></kbd>
+        <sub><sup><figcaption align="center">Our chat window, showing a conversation with the Transformers library. 🚀</sup></sub></figcaption>
     </figure>
   </kbd>
 </div>
