@@ -17,8 +17,8 @@ setup(
     install_requires=open("requirements.txt").readlines() + ["setuptools"],
     entry_points={
         "console_scripts": [
-            "r2v-index=codesage.index:main",
-            "r2v-chat=codesage.chat:main",
+            "cs-index=codesage.index:main",
+            "cs-chat=codesage.chat:main",
         ],
     },
     author="Julia Turc & Mihail Eric / Storia AI",

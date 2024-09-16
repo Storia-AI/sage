@@ -84,12 +84,12 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
-    r2v-index $GITHUB_REPO
+    cs-index $GITHUB_REPO
     ```
 
 3. Chat with the repository, once it's indexed:
     ```
-    r2v-chat $GITHUB_REPO
+    cs-chat $GITHUB_REPO
     ```
     To get a public URL for your chat app, set `--share=true`.
 
@@ -105,7 +105,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
-    r2v-index $GITHUB_REPO \
+    cs-index $GITHUB_REPO \
         --embedder-type=openai \
         --vector-store=pinecone \
         --index-name=$PINECONE_INDEX_NAME
@@ -113,7 +113,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 3. Chat with the repository, once it's indexed:
     ```
-    r2v-chat $GITHUB_REPO \
+    cs-chat $GITHUB_REPO \
         --vector-store-type=pinecone \
         --index-name=$PINECONE_INDEX_NAME \
         --llm-provider=openai \
@@ -147,12 +147,12 @@ where:
 
 To specify an inclusion file (i.e. only index the specified files):
 ```
-r2v-index $GITHUB_REPO --include=/path/to/inclusion/file
+cs-index $GITHUB_REPO --include=/path/to/inclusion/file
 ```
 
 To specify an exclusion file (i.e. index all files, except for the ones specified):
 ```
-r2v-index $GITHUB_REPO --exclude=/path/to/exclusion/file
+cs-index $GITHUB_REPO --exclude=/path/to/exclusion/file
 ```
 By default, we use the exclusion file [sample-exclude.txt](codesage/sample-exclude.txt).
 </details>
@@ -166,17 +166,17 @@ export GITHUB_TOKEN=...
 
 To index GitHub issues without comments:
 ```
-r2v-index $GITHUB_REPO --index-issues
+cs-index $GITHUB_REPO --index-issues
 ```
 
 To index GitHub issues with comments:
 ```
-r2v-index $GITHUB_REPO --index-issues --index-issue-comments
+cs-index $GITHUB_REPO --index-issues --index-issue-comments
 ```
 
 To index GitHub issues, but not the codebase:
 ```
-r2v-index $GITHUB_REPO --index-issues --no-index-repo
+cs-index $GITHUB_REPO --index-issues --no-index-repo
 ```
 </details>
 
@@ -196,7 +196,7 @@ Features:
 
 # Changelog
 
-- 2024-09-06: Updated command names to `r2v-index` and `r2v-chat` to avoid clash with local utilities.
+- 2024-09-06: Updated command names to `cs-index` and `cs-chat` to avoid clash with local utilities.
 - 2024-09-03: `codesage` is now available on pypi.
 - 2024-09-03: Support for indexing GitHub issues.
 - 2024-08-30: Support for running everything locally (Marqo for embeddings, Ollama for LLMs).
