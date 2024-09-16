@@ -8,6 +8,7 @@
             <img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/StoriaAI"></img>
         </a>
     </div>
+    <br />
     <figure>
         <!-- The <kbd> and <sub> tags are work-arounds for styling, since GitHub doesn't take into account inline styles. Note it might display awkwardly on other Markdown editors. -->
         <kbd><img src="assets/chat_screenshot2.png" alt="screenshot" /></kbd>
