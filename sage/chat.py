@@ -1,9 +1,10 @@
 """A gradio app that enables users to chat with their codebase.
 
-You must run main.py first in order to index the codebase into a vector store.
+You must run `sage-index $GITHUB_REPO` first in order to index the codebase into a vector store.
 """
 
 import argparse
+import os
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -11,6 +12,8 @@ from langchain.chains import create_history_aware_retriever, create_retrieval_ch
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain_cohere import CohereRerank
 
 import sage.vector_store as vector_store
 from sage.llm import build_llm_via_langchain
@@ -21,7 +24,11 @@ load_dotenv()
 def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = build_llm_via_langchain(args.llm_provider, args.llm_model)
+
     retriever = vector_store.build_from_args(args).to_langchain().as_retriever()
+    if args.reranker == "cohere":
+        compressor = CohereRerank(model="rerank-english-v3.0", cohere_api_key=os.environ.get("COHERE_API_KEY"))
+        retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=retriever)
 
     # Prompt to contextualize the latest query based on the chat history.
     contextualize_q_system_prompt = (
@@ -82,6 +89,7 @@ def main():
         default="http://localhost:8882",
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
+    parser.add_argument("--reranker", default="cohere", choices=["none", "cohere"])
     parser.add_argument(
         "--share",
         default=False,
