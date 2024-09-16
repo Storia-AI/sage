@@ -1,5 +1,5 @@
 <div align="center">
-  <h1 align="center">codesage</h1>
+  <h1 align="center">Code Sage</h1>
   <p align="center">An open-source pair programmer for chatting with any codebase.</p>
   <figure>
     <img src="assets/chat_screenshot2.png" alt="screenshot" style="max-height: 500px; border: 1px solid black;">
@@ -11,9 +11,27 @@
 
 ## Installation
 
-To install the library, simply run `pip install codesage`!
+<details open>
+<summary><strong>Using pipx (recommended) </strong></summary>
+Make sure pipx is installed on your system (see <a href="https://pipx.pypa.io/stable/installation/">instructions</a>), then run:
 
-:exclamation: **Please make sure you have the latest version installed (as indicated [here](https://github.com/Storia-AI/codesage/blob/ca8ff43b2993ab0da3f0b807513cb4e3f7b0955f/setup.py#L11)). We're under rapid development and older versions quickly become obsolete.** To check your latest version, you can run `pip list | grep codesage`.
+```
+pipx install git+https://github.com/Storia-AI/CodeSage.git@main
+```
+
+</details>
+
+<details>
+<summary><strong>Using venv and pip</strong></summary>
+Alternatively, you can manually create a virtual environment and install Code Sage via pip:
+
+```
+python -m venv codesage-venv
+source codesage-venv/bin/activate
+pip install git+https://github.com/Storia-AI/CodeSage.git@main
+```
+
+</details>
 
 ## Prerequisites
 
@@ -196,8 +214,7 @@ Features:
 
 # Changelog
 
-- 2024-09-06: Updated command names to `cs-index` and `cs-chat` to avoid clash with local utilities.
-- 2024-09-03: `codesage` is now available on pypi.
+- 2024-09-16: Renamed `repo2vec` to `codesage`.
 - 2024-09-03: Support for indexing GitHub issues.
 - 2024-08-30: Support for running everything locally (Marqo for embeddings, Ollama for LLMs).
 
