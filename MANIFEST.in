@@ -1,1 +1,1 @@
-include repo2vec/sample-exclude.txt
+include codesage/sample-exclude.txt

@@ -1,5 +1,5 @@
 <div align="center">
-  <h1 align="center">repo2vec</h1>
+  <h1 align="center">Code Sage</h1>
   <p align="center">An open-source pair programmer for chatting with any codebase.</p>
   <figure>
     <img src="assets/chat_screenshot2.png" alt="screenshot" style="max-height: 500px; border: 1px solid black;">
@@ -7,17 +7,43 @@
   </figure>
 </div>
 
+<div align="center">
+  </br>
+    <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Storia-AI/CodeSage?logo=github" />
+    <img alt="GitHub License" src="https://img.shields.io/github/license/Storia-AI/CodeSage"></img>
+    <img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/StoriaAI"></img>
+  </br>
+</div>
+
 # Getting started
 
 ## Installation
 
-To install the library, simply run `pip install repo2vec`!
+<details open>
+<summary><strong>Using pipx (recommended) </strong></summary>
+Make sure pipx is installed on your system (see <a href="https://pipx.pypa.io/stable/installation/">instructions</a>), then run:
 
-:exclamation: **Please make sure you have the latest version installed (as indicated [here](https://github.com/Storia-AI/repo2vec/blob/ca8ff43b2993ab0da3f0b807513cb4e3f7b0955f/setup.py#L11)). We're under rapid development and older versions quickly become obsolete.** To check your latest version, you can run `pip list | grep repo2vec`.
+```
+pipx install git+https://github.com/Storia-AI/CodeSage.git@main
+```
+
+</details>
+
+<details>
+<summary><strong>Using venv and pip</strong></summary>
+Alternatively, you can manually create a virtual environment and install Code Sage via pip:
+
+```
+python -m venv codesage-venv
+source codesage-venv/bin/activate
+pip install git+https://github.com/Storia-AI/CodeSage.git@main
+```
+
+</details>
 
 ## Prerequisites
 
-`repo2vec` performs two steps:
+`codesage` performs two steps:
 
 1. Indexes your codebase (requiring an embdder and a vector store)
 2. Enables chatting via LLM + RAG (requiring access to an LLM)
@@ -84,12 +110,12 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
-    r2v-index $GITHUB_REPO
+    cs-index $GITHUB_REPO
     ```
 
 3. Chat with the repository, once it's indexed:
     ```
-    r2v-chat $GITHUB_REPO
+    cs-chat $GITHUB_REPO
     ```
     To get a public URL for your chat app, set `--share=true`.
 
@@ -105,7 +131,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
-    r2v-index $GITHUB_REPO \
+    cs-index $GITHUB_REPO \
         --embedder-type=openai \
         --vector-store=pinecone \
         --index-name=$PINECONE_INDEX_NAME
@@ -113,7 +139,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 3. Chat with the repository, once it's indexed:
     ```
-    r2v-chat $GITHUB_REPO \
+    cs-chat $GITHUB_REPO \
         --vector-store-type=pinecone \
         --index-name=$PINECONE_INDEX_NAME \
         --llm-provider=openai \
@@ -147,14 +173,14 @@ where:
 
 To specify an inclusion file (i.e. only index the specified files):
 ```
-r2v-index $GITHUB_REPO --include=/path/to/inclusion/file
+cs-index $GITHUB_REPO --include=/path/to/inclusion/file
 ```
 
 To specify an exclusion file (i.e. index all files, except for the ones specified):
 ```
-r2v-index $GITHUB_REPO --exclude=/path/to/exclusion/file
+cs-index $GITHUB_REPO --exclude=/path/to/exclusion/file
 ```
-By default, we use the exclusion file [sample-exclude.txt](repo2vec/sample-exclude.txt).
+By default, we use the exclusion file [sample-exclude.txt](codesage/sample-exclude.txt).
 </details>
 
 <details>
@@ -166,17 +192,17 @@ export GITHUB_TOKEN=...
 
 To index GitHub issues without comments:
 ```
-r2v-index $GITHUB_REPO --index-issues
+cs-index $GITHUB_REPO --index-issues
 ```
 
 To index GitHub issues with comments:
 ```
-r2v-index $GITHUB_REPO --index-issues --index-issue-comments
+cs-index $GITHUB_REPO --index-issues --index-issue-comments
 ```
 
 To index GitHub issues, but not the codebase:
 ```
-r2v-index $GITHUB_REPO --index-issues --no-index-repo
+cs-index $GITHUB_REPO --index-issues --no-index-repo
 ```
 </details>
 
@@ -185,7 +211,7 @@ r2v-index $GITHUB_REPO --index-issues --no-index-repo
 Sometimes you just want to learn how a codebase works and how to integrate it, without spending hours sifting through
 the code itself.
 
-`repo2vec` is like an open-source GitHub Copilot with the most up-to-date information about your repo.
+`codesage` is like an open-source GitHub Copilot with the most up-to-date information about your repo.
 
 Features:
 
@@ -196,8 +222,7 @@ Features:
 
 # Changelog
 
-- 2024-09-06: Updated command names to `r2v-index` and `r2v-chat` to avoid clash with local utilities.
-- 2024-09-03: `repo2vec` is now available on pypi.
+- 2024-09-16: Renamed `repo2vec` to `codesage`.
 - 2024-09-03: Support for indexing GitHub issues.
 - 2024-08-30: Support for running everything locally (Marqo for embeddings, Ollama for LLMs).
 
