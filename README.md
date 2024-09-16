@@ -1,6 +1,6 @@
 <div align="center">
-    <h1 align="center">Code Sage</h1>
-    <p align="center">An open-source pair programmer for chatting with any codebase.</p>
+    <img src="assets/storia-logo.png" alt="Logo" width="50" style="border-radius: 15px;">
+    <h1 align="center">Sage: Chat with any codebase</h1>
     <div>
         <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Storia-AI/sage?logo=github" />
         <img alt="GitHub License" src="https://img.shields.io/github/license/Storia-AI/sage"></img>
