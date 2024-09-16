@@ -7,6 +7,14 @@
   </figure>
 </div>
 
+<div align="center">
+  </br>
+    <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Storia-AI/CodeSage?logo=github" />
+    <img alt="GitHub License" src="https://img.shields.io/github/license/Storia-AI/CodeSage"></img>
+    <img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/StoriaAI"></img>
+  </br>
+</div>
+
 # Getting started
 
 ## Installation
