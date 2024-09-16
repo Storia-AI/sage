@@ -4,6 +4,7 @@ You must run `sage-index $GITHUB_REPO` first in order to index the codebase into
 """
 
 import argparse
+import logging
 import os
 
 import gradio as gr
@@ -53,7 +54,8 @@ def build_rag_chain(args):
             ("human", "{input}"),
         ]
     )
-    history_aware_retriever = create_history_aware_retriever(llm, retriever, contextualize_q_prompt)
+    contextualize_q_llm = llm.with_config(tags=["contextualize_q_llm"])
+    history_aware_retriever = create_history_aware_retriever(contextualize_q_llm, retriever, contextualize_q_prompt)
 
     qa_system_prompt = (
         f"You are my coding buddy, helping me quickly understand a GitHub repository called {args.repo_id}."
@@ -136,21 +138,48 @@ def main():
 
     rag_chain = build_rag_chain(args)
 
-    def _predict(message, history):
+    def source_md(file_path: str, url: str) -> str:
+        """Formats a context source in Markdown."""
+        return f"[{file_path}]({url})"
+
+    async def _predict(message, history):
         """Performs one RAG operation."""
         history_langchain_format = []
         for human, ai in history:
             history_langchain_format.append(HumanMessage(content=human))
             history_langchain_format.append(AIMessage(content=ai))
         history_langchain_format.append(HumanMessage(content=message))
-        response = rag_chain.invoke({"input": message, "chat_history": history_langchain_format})
-        answer = append_sources_to_response(response)
-        return answer
+
+        query_rewrite = ""
+        response = ""
+        async for event in rag_chain.astream_events(
+            {
+                "input": message,
+                "chat_history": history_langchain_format,
+            },
+            version="v1",
+        ):
+            if event["name"] == "retrieve_documents" and "output" in event["data"]:
+                sources = [(doc.metadata["file_path"], doc.metadata["url"]) for doc in event["data"]["output"]]
+                # Deduplicate while preserving the order.
+                sources = list(dict.fromkeys(sources))
+                response += "## Sources:\n" + "\n".join([source_md(s[0], s[1]) for s in sources]) + "\n## Response:\n"
+
+            elif event["event"] == "on_chat_model_stream":
+                chunk = event["data"]["chunk"].content
+
+                if "contextualize_q_llm" in event["tags"]:
+                    query_rewrite += chunk
+                else:
+                    # This is the actual response to the user query.
+                    if not response:
+                        logging.info(f"Query rewrite: {query_rewrite}")
+                    response += chunk
+                    yield response
 
     gr.ChatInterface(
         _predict,
         title=args.repo_id,
-        description=f"Code sage for your repo: {args.repo_id}",
         examples=["What does this repo do?", "Give me some sample code."],
     ).launch(share=args.share)
 
