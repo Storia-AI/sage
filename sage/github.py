@@ -8,8 +8,8 @@ from typing import Any, Dict, Generator, List, Tuple
 import requests
 import tiktoken
 
-from codesage.chunker import Chunk, Chunker
-from codesage.data_manager import DataManager
+from sage.chunker import Chunk, Chunker
+from sage.data_manager import DataManager
 
 tokenizer = tiktoken.get_encoding("cl100k_base")
 

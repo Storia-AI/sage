@@ -7,18 +7,18 @@ def readfile(filename):
 
 
 setup(
-    name="codesage",
+    name="sage",
     version="0.1.0",
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        "codesage": ["sample-exclude.txt"],
+        "sage": ["sample-exclude.txt"],
     },
     install_requires=open("requirements.txt").readlines() + ["setuptools"],
     entry_points={
         "console_scripts": [
-            "cs-index=codesage.index:main",
-            "cs-chat=codesage.chat:main",
+            "sage-index=sage.index:main",
+            "sage-chat=sage.chat:main",
         ],
     },
     author="Julia Turc & Mihail Eric / Storia AI",
@@ -26,7 +26,7 @@ setup(
     description="A library to index a code repository and chat with it via LLMs.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/Storia-AI/codesage",
+    url="https://github.com/Storia-AI/sage",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

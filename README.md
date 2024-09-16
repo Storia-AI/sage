@@ -1,13 +1,14 @@
 <div align="center">
-    <h1 align="center">Code Sage</h1>
-    <p align="center">An open-source pair programmer for chatting with any codebase.</p>
+    <img src="assets/storia-logo.png" alt="Logo" width="50" style="border-radius: 15px;">
+    <h1 align="center">Sage: Chat with any codebase</h1>
     <div>
-        <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Storia-AI/CodeSage?logo=github" />
-        <img alt="GitHub License" src="https://img.shields.io/github/license/Storia-AI/CodeSage"></img>
+        <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Storia-AI/sage?logo=github" />
+        <img alt="GitHub License" src="https://img.shields.io/github/license/Storia-AI/sage"></img>
         <a href="https://x.com/StoriaAI">
             <img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/StoriaAI"></img>
         </a>
     </div>
+    <br />
     <figure>
         <!-- The <kbd> and <sub> tags are work-arounds for styling, since GitHub doesn't take into account inline styles. Note it might display awkwardly on other Markdown editors. -->
         <kbd><img src="assets/chat_screenshot2.png" alt="screenshot" /></kbd>
@@ -24,7 +25,7 @@
 Make sure pipx is installed on your system (see <a href="https://pipx.pypa.io/stable/installation/">instructions</a>), then run:
 
 ```
-pipx install git+https://github.com/Storia-AI/CodeSage.git@main
+pipx install git+https://github.com/Storia-AI/sage.git@main
 ```
 
 </details>
@@ -34,16 +35,16 @@ pipx install git+https://github.com/Storia-AI/CodeSage.git@main
 Alternatively, you can manually create a virtual environment and install Code Sage via pip:
 
 ```
-python -m venv codesage-venv
-source codesage-venv/bin/activate
-pip install git+https://github.com/Storia-AI/CodeSage.git@main
+python -m venv sage-venv
+source sage-venv/bin/activate
+pip install git+https://github.com/Storia-AI/sage.git@main
 ```
 
 </details>
 
 ## Prerequisites
 
-`codesage` performs two steps:
+`sage` performs two steps:
 
 1. Indexes your codebase (requiring an embdder and a vector store)
 2. Enables chatting via LLM + RAG (requiring access to an LLM)
@@ -110,12 +111,12 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
-    cs-index $GITHUB_REPO
+    sage-index $GITHUB_REPO
     ```
 
 3. Chat with the repository, once it's indexed:
     ```
-    cs-chat $GITHUB_REPO
+    sage-chat $GITHUB_REPO
     ```
     To get a public URL for your chat app, set `--share=true`.
 
@@ -131,7 +132,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
-    cs-index $GITHUB_REPO \
+    sage-index $GITHUB_REPO \
         --embedder-type=openai \
         --vector-store=pinecone \
         --index-name=$PINECONE_INDEX_NAME
@@ -139,7 +140,7 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 3. Chat with the repository, once it's indexed:
     ```
-    cs-chat $GITHUB_REPO \
+    sage-chat $GITHUB_REPO \
         --vector-store-type=pinecone \
         --index-name=$PINECONE_INDEX_NAME \
         --llm-provider=openai \
@@ -173,14 +174,14 @@ where:
 
 To specify an inclusion file (i.e. only index the specified files):
 ```
-cs-index $GITHUB_REPO --include=/path/to/inclusion/file
+sage-index $GITHUB_REPO --include=/path/to/inclusion/file
 ```
 
 To specify an exclusion file (i.e. index all files, except for the ones specified):
 ```
-cs-index $GITHUB_REPO --exclude=/path/to/exclusion/file
+sage-index $GITHUB_REPO --exclude=/path/to/exclusion/file
 ```
-By default, we use the exclusion file [sample-exclude.txt](codesage/sample-exclude.txt).
+By default, we use the exclusion file [sample-exclude.txt](sage/sample-exclude.txt).
 </details>
 
 <details>
@@ -192,17 +193,17 @@ export GITHUB_TOKEN=...
 
 To index GitHub issues without comments:
 ```
-cs-index $GITHUB_REPO --index-issues
+sage-index $GITHUB_REPO --index-issues
 ```
 
 To index GitHub issues with comments:
 ```
-cs-index $GITHUB_REPO --index-issues --index-issue-comments
+sage-index $GITHUB_REPO --index-issues --index-issue-comments
 ```
 
 To index GitHub issues, but not the codebase:
 ```
-cs-index $GITHUB_REPO --index-issues --no-index-repo
+sage-index $GITHUB_REPO --index-issues --no-index-repo
 ```
 </details>
 
@@ -211,7 +212,7 @@ cs-index $GITHUB_REPO --index-issues --no-index-repo
 Sometimes you just want to learn how a codebase works and how to integrate it, without spending hours sifting through
 the code itself.
 
-`codesage` is like an open-source GitHub Copilot with the most up-to-date information about your repo.
+`sage` is like an open-source GitHub Copilot with the most up-to-date information about your repo.
 
 Features:
 
@@ -222,7 +223,7 @@ Features:
 
 # Changelog
 
-- 2024-09-16: Renamed `repo2vec` to `codesage`.
+- 2024-09-16: Renamed `repo2vec` to `sage`.
 - 2024-09-03: Support for indexing GitHub issues.
 - 2024-08-30: Support for running everything locally (Marqo for embeddings, Ollama for LLMs).
 

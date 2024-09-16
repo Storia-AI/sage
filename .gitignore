@@ -3,4 +3,4 @@ __pycache__
 *.cpython.*
 build/
 repos/
-codesage.egg-info/
+sage.egg-info/

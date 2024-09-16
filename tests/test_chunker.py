@@ -11,12 +11,12 @@ import os
 
 from pytest import mark, param
 
-import codesage.chunker
+import sage.chunker
 
 
 def test_text_chunker_happy_path():
     """Tests the happy path for the TextFileChunker."""
-    chunker = codesage.chunker.TextFileChunker(max_tokens=100)
+    chunker = sage.chunker.TextFileChunker(max_tokens=100)
 
     file_path = os.path.join(os.path.dirname(__file__), "../README.md")
     with open(file_path, "r") as file:
@@ -29,9 +29,9 @@ def test_text_chunker_happy_path():
 
 def test_code_chunker_happy_path():
     """Tests the happy path for the CodeFileChunker."""
-    chunker = codesage.chunker.CodeFileChunker(max_tokens=100)
+    chunker = sage.chunker.CodeFileChunker(max_tokens=100)
 
-    file_path = os.path.join(os.path.dirname(__file__), "../codesage/chunker.py")
+    file_path = os.path.join(os.path.dirname(__file__), "../sage/chunker.py")
     with open(file_path, "r") as file:
         content = file.read()
     metadata = {"file_path": file_path}
@@ -48,22 +48,22 @@ def test_code_chunker_typescript(filename):
         content = file.read()
     metadata = {"file_path": file_path}
 
-    chunker = codesage.chunker.CodeFileChunker(max_tokens=100)
+    chunker = sage.chunker.CodeFileChunker(max_tokens=100)
     chunks = chunker.chunk(content, metadata)
     # There's a bug in the tree-sitter-language-pack library for TypeScript. Before it gets fixed, we expect this to
     # return an empty list (instead of crashing).
     assert len(chunks) == 0
 
     # However, the UniversalFileChunker should fallback onto a regular text chunker, and return some chunks.
-    chunker = codesage.chunker.UniversalFileChunker(max_tokens=100)
+    chunker = sage.chunker.UniversalFileChunker(max_tokens=100)
     chunks = chunker.chunk(content, metadata)
     assert len(chunks) >= 1
 
 
 def test_ipynb_chunker_happy_path():
     """Tests the happy path for the IPynbChunker."""
-    code_chunker = codesage.chunker.CodeFileChunker(max_tokens=100)
-    chunker = codesage.chunker.IpynbFileChunker(code_chunker)
+    code_chunker = sage.chunker.CodeFileChunker(max_tokens=100)
+    chunker = sage.chunker.IpynbFileChunker(code_chunker)
 
     file_path = os.path.join(os.path.dirname(__file__), "assets/sample-notebook.ipynb")
     with open(file_path, "r") as file:

@@ -12,8 +12,8 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-import codesage.vector_store as vector_store
-from codesage.llm import build_llm_via_langchain
+import sage.vector_store as vector_store
+from sage.llm import build_llm_via_langchain
 
 load_dotenv()
 
