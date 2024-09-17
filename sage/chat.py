@@ -28,7 +28,7 @@ def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = build_llm_via_langchain(args.llm_provider, args.llm_model)
 
-    retriever = vector_store.build_from_args(args).to_langchain().as_retriever()
+    retriever = vector_store.build_from_args(args).to_langchain().as_retriever(search_kwargs={"k": 25})
 
     if args.reranker_provider == "none":
         compressor = None
