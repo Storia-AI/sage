@@ -2,18 +2,10 @@
     <img src="assets/storia-logo.png" alt="Logo" width="50" style="border-radius: 15px;">
     <h1 align="center">Sage: Chat with any codebase</h1>
     <div>
-        <a href="https://discord.gg/zbtZe7GcVU">
-            <img alt="Discord" src="https://img.shields.io/discord/1286056351264407643" />
-        </a>
-        <a href="https://x.com/StoriaAI">
-            <img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/StoriaAI" />
-        </a>
-        <a href="https://github.com/Storia-AI/sage/stargazers">
-            <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Storia-AI/sage?logo=github" />
-        </a>
-        <a href="https://github.com/Storia-AI/sage/blob/main/LICENSE">
-            <img alt="GitHub License" src="https://img.shields.io/github/license/Storia-AI/sage" />
-        </a>
+        <img alt="Discord" src="https://img.shields.io/discord/1286056351264407643?logo=discord&label=discord&link=https%3A%2F%2Fdiscord.gg%2FzbtZe7GcVU">
+        <img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/Storia-AI?logo=x&link=https%3A%2F%2Fx.com%2FStoriaAI">
+        <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Storia-AI/sage?logo=github&link=https%3A%2F%2Fgithub.com%2FStoria-AI%2Fsage%2Fstargazers">
+        <img alt="GitHub License" src="https://img.shields.io/github/license/Storia-AI/sage" />
     </div>
     <br />
     <figure>
