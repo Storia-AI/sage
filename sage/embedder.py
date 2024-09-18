@@ -12,6 +12,7 @@ import marqo
 from openai import OpenAI
 
 from sage.chunker import Chunk, Chunker
+from sage.constants import TEXT_FIELD
 from sage.data_manager import DataManager
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
@@ -139,7 +140,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
                     and "start_byte" in metadata
                     and "end_byte" in metadata
                 ):
-                    metadata.pop("text", None)
+                    metadata.pop(TEXT_FIELD, None)
                 embedding = datum["embedding"]
                 yield (metadata, embedding)
 
@@ -240,7 +241,7 @@ class MarqoEmbedder(BatchEmbedder):
                     logging.info("Indexing %d chunks...", len(sub_batch))
                     self.index.add_documents(
                         documents=[chunk.metadata for chunk in sub_batch],
-                        tensor_fields=["text"],
+                        tensor_fields=[TEXT_FIELD],
                     )
                     job_count += 1
 
@@ -251,7 +252,7 @@ class MarqoEmbedder(BatchEmbedder):
 
         # Finally, commit the last batch.
         if batch:
-            self.index.add_documents(documents=[chunk.metadata for chunk in batch], tensor_fields=["text"])
+            self.index.add_documents(documents=[chunk.metadata for chunk in batch], tensor_fields=[TEXT_FIELD])
         logging.info(f"Successfully embedded {chunk_count} chunks.")
 
     def embeddings_are_ready(self) -> bool:

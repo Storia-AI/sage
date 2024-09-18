@@ -14,6 +14,8 @@ from semchunk import chunk as chunk_via_semchunk
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
 
+from sage.constants import TEXT_FIELD
+
 logger = logging.getLogger(__name__)
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
@@ -62,7 +64,7 @@ class FileChunk(Chunk):
             # Note to developer: When choosing a large chunk size, you might exceed the vector store's metadata
             # size limit. In that case, you can simply store the start/end bytes above, and fetch the content
             # directly from the repository when needed.
-            "text": self.content,
+            TEXT_FIELD: self.content,
         }
         chunk_metadata.update(self.file_metadata)
         return chunk_metadata

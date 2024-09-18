@@ -9,6 +9,7 @@ import requests
 import tiktoken
 
 from sage.chunker import Chunk, Chunker
+from sage.constants import TEXT_FIELD
 from sage.data_manager import DataManager
 
 tokenizer = tiktoken.get_encoding("cl100k_base")
@@ -179,7 +180,7 @@ class IssueChunk(Chunk):
             # Note to developer: When choosing a large chunk size, you might exceed the vector store's metadata
             # size limit. In that case, you can simply store the start/end comment indices above, and fetch the
             # content of the issue on demand from the URL.
-            "text": self.content,
+            TEXT_FIELD: self.content,
         }
 
     @property
