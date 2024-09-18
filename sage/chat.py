@@ -28,7 +28,8 @@ def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = build_llm_via_langchain(args.llm_provider, args.llm_model)
 
-    retriever = vector_store.build_from_args(args).to_langchain().as_retriever(search_kwargs={"k": 25})
+    retriever_top_k = 5 if args.reranker_provider == "none" else 25
+    retriever = vector_store.build_from_args(args).as_retriever(top_k=retriever_top_k)
 
     if args.reranker_provider == "none":
         compressor = None
@@ -78,14 +79,6 @@ def build_rag_chain(args):
     return rag_chain
 
 
-def append_sources_to_response(response):
-    """Given an OpenAI completion response, appends to it GitHub links of the context sources."""
-    urls = [document.metadata["url"] for document in response["context"]]
-    # Deduplicate urls while preserving their order.
-    urls = list(dict.fromkeys(urls))
-    return response["answer"] + "\n\nSources:\n" + "\n".join(urls)
-
-
 def main():
     parser = argparse.ArgumentParser(description="UI to chat with your codebase")
     parser.add_argument("repo_id", help="The ID of the repository to index")
@@ -111,6 +104,13 @@ def main():
         "--share",
         default=False,
         help="Whether to make the gradio app publicly accessible.",
+    )
+    parser.add_argument(
+        "--hybrid-retrieval",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether to use a hybrid of vector DB + BM25 retrieval. When set to False, we only use vector DB "
+        "retrieval. This is only relevant if using Pinecone as the vector store.",
     )
     args = parser.parse_args()
 

@@ -118,6 +118,13 @@ def main():
         "GitHub's API for downloading comments is quite slow. Indexing solely the body of an issue seems to bring most "
         "of the gains anyway.",
     )
+    parser.add_argument(
+        "--hybrid-retrieval",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether to use a hybrid of vector DB + BM25 retrieval. When set to False, we only use vector DB "
+        "retrieval. This is only relevant if using Pinecone as the vector store.",
+    )
     args = parser.parse_args()
 
     # Validate embedder and vector store compatibility.

@@ -80,7 +80,7 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     export PINECONE_API_KEY=...
     ```
 
-2. Create a Pinecone index [on their website](https://pinecone.io) and export the name:
+2. Create a Pinecone account. Export the desired index name (if it doesn't exist yet, we'll create it):
     ```
     export PINECONE_INDEX_NAME=...
     ```
