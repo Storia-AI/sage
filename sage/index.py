@@ -71,10 +71,15 @@ def main():
         help="Maximum chunks per batch. We recommend 2000 for the OpenAI embedder. Marqo enforces a limit of 64.",
     )
     parser.add_argument(
-        "--index-name",
+        "--pinecone-index-name",
         default=None,
-        help="Vector store index name. For Marqo, we default it to the repository name. Required for Pinecone. "
-        "In Pinecone terminology, this is *not* the namespace (which we default to the repo ID).",
+        help="Pinecone index name. Required if using Pinecone as the vector store. If the index doesn't exist already, "
+        "we will create it.",
+    )
+    parser.add_argument(
+        "--index-namespace",
+        default=None,
+        help="Index namespace for this repo. When not specified, we default it to a derivative of the repo name."
     )
     parser.add_argument(
         "--include",
@@ -133,15 +138,10 @@ def main():
     if args.embedder_type == "marqo" and args.vector_store_type != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
     if args.vector_store_type == "marqo":
-        if not args.index_name:
-            args.index_name = args.repo_id.split("/")[1]
-        if "/" in args.index_name:
-            parser.error("The index name cannot contain slashes when using Marqo as the vector store.")
-    elif args.vector_store_type == "pinecone" and not args.index_name:
-        parser.error(
-            "When using Pinecone as the vector store, you must specify an index name. You can create one on "
-            "the Pinecone website. Make sure to set it the right --embedding-size."
-        )
+        if "/" in args.index_namespace:
+            parser.error("The index namespace cannot contain slashes when using Marqo as the vector store.")
+    elif args.vector_store_type == "pinecone" and not args.pinecone_index_name:
+        parser.error("When using Pinecone as the vector store, you must specify --pinecone-index-name")
 
     # Validate embedder parameters.
     if args.embedder_type == "marqo":

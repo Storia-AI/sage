@@ -149,27 +149,32 @@ class MarqoVectorStore(VectorStore):
 def build_from_args(args: dict) -> VectorStore:
     """Builds a vector store from the given command-line arguments."""
     if args.vector_store_type == "pinecone":
-        if not args.index_name:
-            raise ValueError("Please specify --index-name for Pinecone.")
+        if not args.pinecone_index_name:
+            raise ValueError("Please specify --pinecone-index-name for Pinecone.")
         dimension = args.embedding_size if "embedding_size" in args else None
 
-        namespace = args.repo_id
-        if args.commit_hash:
-            namespace += "/" + args.commit_hash
+        index_namespace = args.index_namespace
+        if not index_namespace:
+            index_namespace = args.repo_id
+            if args.commit_hash:
+                namespace += "/" + args.commit_hash
 
         return PineconeVectorStore(
-            index_name=args.index_name, namespace=namespace, dimension=dimension, hybrid=args.hybrid_retrieval
+            index_name=args.pinecone_index_name,
+            namespace=index_namespace,
+            dimension=dimension,
+            hybrid=args.hybrid_retrieval,
         )
     elif args.vector_store_type == "marqo":
         marqo_url = args.marqo_url or "http://localhost:8882"
 
-        index_name = args.index_name
-        if not index_name:
+        index_namespace = args.index_namespace
+        if not index_namespace:
             # Marqo doesn't allow slashes in the index name.
-            index_name = args.repo_id.split("/")[1]
+            index_namespace = args.repo_id.split("/")[1]
             if args.commit_hash:
-                index_name += "_" + args.commit_hash
+                index_namespace += "_" + args.commit_hash
 
-        return MarqoVectorStore(url=marqo_url, index_name=index_name)
+        return MarqoVectorStore(url=marqo_url, index_name=index_namespace)
     else:
         raise ValueError(f"Unrecognized vector store type {args.vector_store_type}")
