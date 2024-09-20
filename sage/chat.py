@@ -12,14 +12,12 @@ from dotenv import load_dotenv
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain.schema import AIMessage, HumanMessage
-from langchain_cohere import CohereRerank
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 import sage.vector_store as vector_store
 from sage.llm import build_llm_via_langchain
+from sage.reranker import build_reranker, RerankerProvider
 
 load_dotenv()
 
@@ -94,7 +92,7 @@ def main():
         default="http://localhost:8882",
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
-    parser.add_argument("--reranker-provider", default="huggingface", choices=["none", "huggingface", "cohere"])
+    parser.add_argument("--reranker-provider", default="huggingface", choices=[r.value for r in RerankerProvider])
     parser.add_argument(
         "--reranker-model",
         help="The reranker model name. When --reranker-provider=huggingface, we suggest choosing a model from the "
@@ -114,12 +112,6 @@ def main():
     )
     args = parser.parse_args()
 
-    if not args.index_name:
-        if args.vector_store_type == "marqo":
-            args.index_name = args.repo_id.split("/")[1]
-        elif args.vector_store_type == "pinecone":
-            parser.error("Please specify --index-name for Pinecone.")
-
     if not args.llm_model:
         if args.llm_provider == "openai":
             args.llm_model = "gpt-4"
@@ -129,12 +121,6 @@ def main():
             args.llm_model = "llama3.1"
         else:
             raise ValueError("Please specify --llm_model")
-
-    if not args.reranker_model:
-        if args.reranker_provider == "cohere":
-            args.reranker_model = "rerank-english-v3.0"
-        elif args.reranker_provider == "huggingface":
-            args.reranker_model = "cross-encoder/ms-marco-TinyBERT-L-2-v2"
 
     rag_chain = build_rag_chain(args)
 

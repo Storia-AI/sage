@@ -149,11 +149,15 @@ class MarqoVectorStore(VectorStore):
 def build_from_args(args: dict) -> VectorStore:
     """Builds a vector store from the given command-line arguments."""
     if args.vector_store_type == "pinecone":
+        if not args.index_name:
+            raise ValueError("Please specify --index-name for Pinecone.")
         dimension = args.embedding_size if "embedding_size" in args else None
         return PineconeVectorStore(
             index_name=args.index_name, namespace=args.repo_id, dimension=dimension, hybrid=args.hybrid_retrieval
         )
     elif args.vector_store_type == "marqo":
-        return MarqoVectorStore(url=args.marqo_url, index_name=args.index_name)
+        marqo_url = args.marqo_url or "http://localhost:8882"
+        index_name = args.index_name or args.repo_id.split("/")[1]
+        return MarqoVectorStore(url=marqo_url, index_name=index_name)
     else:
         raise ValueError(f"Unrecognized vector store type {args.vector_store_type}")

@@ -94,9 +94,21 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 
 <br>
 <summary><strong>Optional</strong></summary>
-If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
+
+- By default, we use an <a href="https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2">open-source re-ranker</a>. For higher accuracy, you can use <a href="https://cohere.com/rerank">Cohere</a>, <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a> or <a href="https://jina.ai/reranker/">Jina</a>:
+
+    ```
+    export COHERE_API_KEY=...
+    export NVIDIA_API_KEY=...
+    export JINA_API_KEY=...
+    ```
+
+    We are seeing significant gains in accuracy from these proprietary rerankers.
+
+- If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
 
     export GITHUB_TOKEN=...
+
 
 ## Running it
 
