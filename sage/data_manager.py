@@ -29,6 +29,7 @@ class GitHubRepoManager(DataManager):
     def __init__(
         self,
         repo_id: str,
+        commit_hash: str = None,
         local_dir: str = None,
         inclusion_file: str = None,
         exclusion_file: str = None,
@@ -36,6 +37,7 @@ class GitHubRepoManager(DataManager):
         """
         Args:
             repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/sage".
+            commit_hash: Optional commit hash to checkout. If not specified, we pull the latest version of the repo.
             local_dir: The local directory where the repository will be cloned.
             inclusion_file: A file with a lists of files/directories/extensions to include. Each line must be in one of
                 the following formats: "ext:.my-extension", "file:my-file.py", or "dir:my-directory".
@@ -44,6 +46,7 @@ class GitHubRepoManager(DataManager):
         """
         super().__init__(dataset_id=repo_id)
         self.repo_id = repo_id
+        self.commit_hash = commit_hash
 
         self.local_dir = local_dir or "/tmp/"
         if not os.path.exists(self.local_dir):
@@ -103,7 +106,11 @@ class GitHubRepoManager(DataManager):
             clone_url = f"https://github.com/{self.repo_id}.git"
 
         try:
-            Repo.clone_from(clone_url, self.local_path, depth=1, single_branch=True)
+            if self.commit_hash:
+                repo = Repo.clone_from(clone_url, self.local_path)
+                repo.git.checkout(self.commit_hash)
+            else:
+                Repo.clone_from(clone_url, self.local_path, depth=1, single_branch=True)
         except GitCommandError as e:
             logging.error("Unable to clone %s from %s. Error: %s", self.repo_id, clone_url, e)
             return False

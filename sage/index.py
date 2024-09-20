@@ -38,6 +38,7 @@ OPENAI_DEFAULT_EMBEDDING_SIZE = {
 def main():
     parser = argparse.ArgumentParser(description="Batch-embeds a GitHub repository and its issues.")
     parser.add_argument("repo_id", help="The ID of the repository to index")
+    parser.add_argument("--commit-hash", help="Optional commit hash to checkout. When not provided, defaults to HEAD.")
     parser.add_argument("--embedder-type", default="marqo", choices=["openai", "marqo"])
     parser.add_argument(
         "--embedding-model",
@@ -72,9 +73,8 @@ def main():
     parser.add_argument(
         "--index-name",
         default=None,
-        help="Vector store index name. For Marqo, we default it to the repository name. Required for Pinecone, since "
-        "it needs to be created manually on their website. In Pinecone terminology, this is *not* the namespace (which "
-        "we default to the repo ID).",
+        help="Vector store index name. For Marqo, we default it to the repository name. Required for Pinecone. "
+        "In Pinecone terminology, this is *not* the namespace (which we default to the repo ID).",
     )
     parser.add_argument(
         "--include",
@@ -202,6 +202,7 @@ def main():
         logging.info("Cloning the repository...")
         repo_manager = GitHubRepoManager(
             args.repo_id,
+            commit_hash=args.commit_hash,
             local_dir=args.local_dir,
             inclusion_file=args.include,
             exclusion_file=args.exclude,
