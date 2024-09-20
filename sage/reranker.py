@@ -8,7 +8,6 @@ from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_community.document_compressors import JinaRerank
 from langchain_core.documents import BaseDocumentCompressor
 from langchain_nvidia_ai_endpoints import NVIDIARerank
-from langchain_community.document_compressors.rankllm_rerank import RankLLMRerank
 
 
 class RerankerProvider(Enum):

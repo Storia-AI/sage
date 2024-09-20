@@ -28,15 +28,7 @@ def build_rag_chain(args):
 
     retriever_top_k = 5 if args.reranker_provider == "none" else 25
     retriever = vector_store.build_from_args(args).as_retriever(top_k=retriever_top_k)
-
-    if args.reranker_provider == "none":
-        compressor = None
-    if args.reranker_provider == "huggingface":
-        encoder_model = HuggingFaceCrossEncoder(model_name=args.reranker_model)
-        compressor = CrossEncoderReranker(model=encoder_model, top_n=5)
-    if args.reranker_provider == "cohere":
-        compressor = CohereRerank(model=args.reranker_model, cohere_api_key=os.environ.get("COHERE_API_KEY"), top_n=5)
-
+    compressor = build_reranker(args.reranker_provider, args.reranker_model)
     if compressor:
         retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=retriever)
 
