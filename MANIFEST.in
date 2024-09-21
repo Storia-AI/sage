@@ -1,1 +1,3 @@
 include sage/sample-exclude.txt
+include sage/configs/local.yaml
+include sage/configs/remote.yaml

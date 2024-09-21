@@ -49,7 +49,7 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 2. Enables chatting via LLM + RAG (requiring access to an LLM)
 
 <details open>
-<summary><strong>:computer: Running locally</strong></summary>
+<summary><strong>:computer: Running locally (lower quality)</strong></summary>
 
 1. To index the codebase locally, we use the open-source project <a href="https://github.com/marqo-ai/marqo">Marqo</a>, which is both an embedder and a vector store. To bring up a Marqo instance:
 
@@ -70,7 +70,7 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 </details>
 
 <details>
-<summary><strong>:cloud: Using external providers</strong></summary>
+<summary><strong>:cloud: Using external providers (higher quality)</strong></summary>
 
 1. We support <a href="https://openai.com/">OpenAI</a> for embeddings (they have a super fast batch embedding API) and <a href="https://www.pinecone.io/">Pinecone</a> for the vector store. So you will need two API keys:
 
@@ -85,7 +85,6 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     ```
 
 2. For chatting with an LLM, we support OpenAI and Anthropic. For the latter, set an additional API key:
-
     ```
     export ANTHROPIC_API_KEY=...
     ```
@@ -107,13 +106,14 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 
 - If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
 
+    ```
     export GITHUB_TOKEN=...
-
+    ```
 
 ## Running it
 
 <details open>
-<summary><strong>:computer: Run locally</strong></summary>
+<summary><strong>:computer: Run locally (lower quality)</strong></summary>
 
 1. Select your desired repository:
     ```
@@ -131,10 +131,11 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     ```
     To get a public URL for your chat app, set `--share=true`.
 
+You can overwrite the default settings (e.g. desired LLM) by modifying [configs/local.yaml](sage/configs/local.yaml) or via command line flags.
 </details>
 
 <details>
-<summary><strong>:cloud: Use external providers</strong></summary>
+<summary><strong>:cloud: Using external providers (higher quality)</strong></summary>
 
 1. Select your desired repository:
     ```
@@ -143,21 +144,16 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 
 2. Index the repository. This might take a few minutes, depending on its size.
     ```
-    sage-index $GITHUB_REPO \
-        --embedder-type=openai \
-        --vector-store=pinecone \
-        --index-name=$PINECONE_INDEX_NAME
+    sage-index $GITHUB_REPO --mode=remote
     ```
 
 3. Chat with the repository, once it's indexed:
     ```
-    sage-chat $GITHUB_REPO \
-        --vector-store-type=pinecone \
-        --index-name=$PINECONE_INDEX_NAME \
-        --llm-provider=openai \
-        --llm-model=gpt-4
+    sage-chat $GITHUB_REPO --mode=remote
     ```
     To get a public URL for your chat app, set `--share=true`.
+
+You can overwrite the default settings (e.g. desired LLM) by modifying [configs/remote.yaml](sage/configs/remote.yaml) or via command line flags.
 </details>
 
 ## Additional features
