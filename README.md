@@ -98,8 +98,7 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 
 </details>
 
-<summary><strong>Optional</strong></summary>
-
+### Optional
 If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
 
     export GITHUB_TOKEN=...
@@ -143,10 +142,11 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
     ```
     sage-chat $GITHUB_REPO --mode=remote
     ```
-    To get a public URL for your chat app, set `--share=true`.
 </details>
 
-You can overwrite the default settings (e.g. desired LLM) via command line flags (run `sage-index --help` or `sage-chat --help` for a full list).
+### Notes:
+- To get a public URL for your chat app, set `--share=true`.
+- You can overwrite the default settings (e.g. desired LLM) via command line flags (run `sage-index --help` or `sage-chat --help` for a full list).
 
 ## Additional features
 
