@@ -121,6 +121,7 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
         help="Whether to use a hybrid of vector DB + BM25 retrieval. When set to False, we only use vector DB "
         "retrieval. This is only relevant if using Pinecone as the vector store.",
     )
+    parser.add("--retriever-top-k", default=25, help="The number of top documents to retrieve from the vector store.")
     return validate_vector_store_args
 
 
@@ -169,6 +170,7 @@ def add_reranking_args(parser: ArgumentParser) -> Callable:
         help="The reranker model name. When --reranker-provider=huggingface, we suggest choosing a model from the "
         "SentenceTransformers Cross-Encoders library https://huggingface.co/cross-encoder?sort_models=downloads#models",
     )
+    parser.add("--reranker-top-k", default=5, help="The number of top documents to return after reranking.")
     # Trivial validator (nothing to check).
     return lambda _: True
 

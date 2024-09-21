@@ -9,7 +9,7 @@ from langchain_community.retrievers import PineconeHybridSearchRetriever
 from langchain_community.vectorstores import Marqo
 from langchain_community.vectorstores import Pinecone as LangChainPinecone
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
+from langchain_core.embeddings import Embeddings
 from pinecone import Pinecone, ServerlessSpec
 from pinecone_text.sparse import BM25Encoder
 
@@ -41,7 +41,7 @@ class VectorStore(ABC):
             self.upsert_batch(batch)
 
     @abstractmethod
-    def as_retriever(self, top_k: int):
+    def as_retriever(self, top_k: int, embeddings: Embeddings):
         """Converts the vector store to a LangChain retriever object."""
 
 
@@ -98,10 +98,10 @@ class PineconeVectorStore(VectorStore):
 
         self.index.upsert(vectors=pinecone_vectors, namespace=self.namespace)
 
-    def as_retriever(self, top_k: int):
+    def as_retriever(self, top_k: int, embeddings: Embeddings):
         if self.bm25_encoder:
             return PineconeHybridSearchRetriever(
-                embeddings=OpenAIEmbeddings(),
+                embeddings=embeddings,
                 sparse_encoder=self.bm25_encoder,
                 index=self.index,
                 namespace=self.namespace,
@@ -110,7 +110,7 @@ class PineconeVectorStore(VectorStore):
             )
 
         return LangChainPinecone.from_existing_index(
-            index_name=self.index_name, embedding=OpenAIEmbeddings(), namespace=self.namespace
+            index_name=self.index_name, embedding=embeddings, namespace=self.namespace
         ).as_retriever(search_kwargs={"k": top_k})
 
 
@@ -128,7 +128,8 @@ class MarqoVectorStore(VectorStore):
         # Since Marqo is both an embedder and a vector store, the embedder is already doing the upsert.
         pass
 
-    def as_retriever(self, top_k: int):
+    def as_retriever(self, top_k: int, embeddings: Embeddings = None):
+        del embeddings  # Unused; The Marqo vector store is also an embedder.
         vectorstore = Marqo(client=self.client, index_name=self.index_name)
 
         # Monkey-patch the _construct_documents_from_results_without_score method to not expect a "metadata" field in
