@@ -1,4 +1,4 @@
-"""Utility methods to validate the .yaml configurations."""
+"""Utility methods to define and validate flags."""
 
 import argparse
 import logging
@@ -31,7 +31,12 @@ OPENAI_DEFAULT_EMBEDDING_SIZE = {
 
 def add_config_args(parser: ArgumentParser):
     """Adds configuration-related arguments to the parser."""
-    parser.add("--mode", choices=["local", "remote"], default="local", help="Whether to use local-only resources or call third-party providers.")
+    parser.add(
+        "--mode",
+        choices=["local", "remote"],
+        default="local",
+        help="Whether to use local-only resources or call third-party providers.",
+    )
     parser.add(
         "--config",
         is_config_file=True,
