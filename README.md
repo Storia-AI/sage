@@ -84,31 +84,25 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     export PINECONE_INDEX_NAME=...
     ```
 
-2. For chatting with an LLM, we support OpenAI and Anthropic. For the latter, set an additional API key:
+3. For reranking, we use <a href="https://cohere.com/rerank">Cohere</a> by default, but you can also try rerankers from <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a> or <a href="https://jina.ai/reranker/">Jina</a>:
+    ```
+    export COHERE_API_KEY=...  # or
+    export NVIDIA_API_KEY=...  # or
+    export JINA_API_KEY=...
+    ```
+
+4. For chatting with an LLM, we support OpenAI and Anthropic. For the latter, set an additional API key:
     ```
     export ANTHROPIC_API_KEY=...
     ```
 
 </details>
 
-<br>
 <summary><strong>Optional</strong></summary>
 
-- By default, we use an <a href="https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2">open-source re-ranker</a>. For higher accuracy, you can use <a href="https://cohere.com/rerank">Cohere</a>, <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a> or <a href="https://jina.ai/reranker/">Jina</a>:
+If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
 
-    ```
-    export COHERE_API_KEY=...
-    export NVIDIA_API_KEY=...
-    export JINA_API_KEY=...
-    ```
-
-    We are seeing significant gains in accuracy from these proprietary rerankers.
-
-- If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
-
-    ```
     export GITHUB_TOKEN=...
-    ```
 
 ## Running it
 
@@ -130,8 +124,6 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     sage-chat $GITHUB_REPO
     ```
     To get a public URL for your chat app, set `--share=true`.
-
-You can overwrite the default settings (e.g. desired LLM) by modifying [configs/local.yaml](sage/configs/local.yaml) or via command line flags.
 </details>
 
 <details>
@@ -152,9 +144,9 @@ You can overwrite the default settings (e.g. desired LLM) by modifying [configs/
     sage-chat $GITHUB_REPO --mode=remote
     ```
     To get a public URL for your chat app, set `--share=true`.
-
-You can overwrite the default settings (e.g. desired LLM) by modifying [configs/remote.yaml](sage/configs/remote.yaml) or via command line flags.
 </details>
+
+You can overwrite the default settings (e.g. desired LLM) via command line flags (run `sage-index --help` or `sage-chat --help` for a full list).
 
 ## Additional features
 
