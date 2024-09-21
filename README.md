@@ -105,9 +105,6 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 ## Running it
 
-<details open>
-<summary><strong>:computer: Run locally (lower quality)</strong></summary>
-
 1. Select your desired repository:
     ```
     export GITHUB_REPO=huggingface/transformers
@@ -117,36 +114,18 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
     ```
     sage-index $GITHUB_REPO
     ```
+    To use external providers instead of running locally, set `--mode=remote`.
 
 3. Chat with the repository, once it's indexed:
     ```
     sage-chat $GITHUB_REPO
     ```
-    To get a public URL for your chat app, set `--share=true`.
-</details>
-
-<details>
-<summary><strong>:cloud: Using external providers (higher quality)</strong></summary>
-
-1. Select your desired repository:
-    ```
-    export GITHUB_REPO=huggingface/transformers
-    ```
-
-2. Index the repository. This might take a few minutes, depending on its size.
-    ```
-    sage-index $GITHUB_REPO --mode=remote
-    ```
-
-3. Chat with the repository, once it's indexed:
-    ```
-    sage-chat $GITHUB_REPO --mode=remote
-    ```
+    To use external providers instead of running locally, set `--mode=remote`.
 </details>
 
 ### Notes:
 - To get a public URL for your chat app, set `--share=true`.
-- You can overwrite the default settings (e.g. desired LLM) via command line flags (run `sage-index --help` or `sage-chat --help` for a full list).
+- You can overwrite the default settings (e.g. desired embedding model or LLM) via command line flags. Run `sage-index --help` or `sage-chat --help` for a full list.
 
 ## Additional features
 
