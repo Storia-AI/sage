@@ -257,8 +257,11 @@ def validate_vector_store_args(args):
     """Validates the configuration of the vector store and sets defaults."""
 
     if not args.index_namespace:
+        # Attempt to derive a default index namespace from the repository information.
+        if "repo_id" not in args:
+            raise ValueError("Please set a value for --index-namespace.")
         args.index_namespace = args.repo_id
-        if args.commit_hash:
+        if "commit_hash" in args and args.commit_hash:
             args.index_namespace += "/" + args.commit_hash
         if args.vector_store_provider == "marqo":
             # Marqo doesn't allow slashes in the index namespace.
