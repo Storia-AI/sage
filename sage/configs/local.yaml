@@ -1,0 +1,16 @@
+# Embeddings
+embedding-provider: marqo
+embedding-model: hf/e5-base-v2
+tokens-per-chunk: 800
+chunks-per-batch: 64
+
+# Vector store
+vector-store-provider: marqo
+
+# LLM
+llm-provider: ollama
+llm-model: llama3.1
+
+# Reranking
+reranking-provider: huggingface
+reranking-model: cross-encoder/ms-marco-MiniLM-L-6-v2

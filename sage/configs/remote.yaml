@@ -1,0 +1,18 @@
+# Embeddings
+embedding-provider: openai
+embedding-model: text-embedding-ada-002
+tokens-per-chunk: 800
+chunks-per-batch: 2000
+
+# Vector store
+vector-store-provider: pinecone
+pinecone-index-name: sage
+hybrid-retrieval: true
+
+# LLM
+llm-provider: openai
+llm-model: gpt-4
+
+# Reranking
+reranking-provider: cohere
+reranking-model: rerank-english-v3.0

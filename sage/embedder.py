@@ -268,11 +268,11 @@ class MarqoEmbedder(BatchEmbedder):
 
 
 def build_batch_embedder_from_flags(data_manager: DataManager, chunker: Chunker, args) -> BatchEmbedder:
-    if args.embedder_type == "openai":
+    if args.embedding_provider == "openai":
         return OpenAIBatchEmbedder(data_manager, chunker, args.local_dir, args.embedding_model, args.embedding_size)
-    elif args.embedder_type == "marqo":
+    elif args.embedding_provider == "marqo":
         return MarqoEmbedder(
-            data_manager, chunker, index_name=args.index_name, url=args.marqo_url, model=args.embedding_model
+            data_manager, chunker, index_name=args.index_namespace, url=args.marqo_url, model=args.embedding_model
         )
     else:
-        raise ValueError(f"Unrecognized embedder type {args.embedder_type}")
+        raise ValueError(f"Unrecognized embedder type {args.embedding_provider}")

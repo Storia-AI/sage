@@ -49,7 +49,7 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 2. Enables chatting via LLM + RAG (requiring access to an LLM)
 
 <details open>
-<summary><strong>:computer: Running locally</strong></summary>
+<summary><strong>:computer: Running locally (lower quality)</strong></summary>
 
 1. To index the codebase locally, we use the open-source project <a href="https://github.com/marqo-ai/marqo">Marqo</a>, which is both an embedder and a vector store. To bring up a Marqo instance:
 
@@ -70,7 +70,7 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 </details>
 
 <details>
-<summary><strong>:cloud: Using external providers</strong></summary>
+<summary><strong>:cloud: Using external providers (higher quality)</strong></summary>
 
 1. We support <a href="https://openai.com/">OpenAI</a> for embeddings (they have a super fast batch embedding API) and <a href="https://www.pinecone.io/">Pinecone</a> for the vector store. So you will need two API keys:
 
@@ -84,36 +84,26 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     export PINECONE_INDEX_NAME=...
     ```
 
-2. For chatting with an LLM, we support OpenAI and Anthropic. For the latter, set an additional API key:
+3. For reranking, we use <a href="https://cohere.com/rerank">Cohere</a> by default, but you can also try rerankers from <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a> or <a href="https://jina.ai/reranker/">Jina</a>:
+    ```
+    export COHERE_API_KEY=...  # or
+    export NVIDIA_API_KEY=...  # or
+    export JINA_API_KEY=...
+    ```
 
+4. For chatting with an LLM, we support OpenAI and Anthropic. For the latter, set an additional API key:
     ```
     export ANTHROPIC_API_KEY=...
     ```
 
 </details>
 
-<br>
-<summary><strong>Optional</strong></summary>
-
-- By default, we use an <a href="https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2">open-source re-ranker</a>. For higher accuracy, you can use <a href="https://cohere.com/rerank">Cohere</a>, <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a> or <a href="https://jina.ai/reranker/">Jina</a>:
-
-    ```
-    export COHERE_API_KEY=...
-    export NVIDIA_API_KEY=...
-    export JINA_API_KEY=...
-    ```
-
-    We are seeing significant gains in accuracy from these proprietary rerankers.
-
-- If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
+### Optional
+If you are planning on indexing GitHub issues in addition to the codebase, you will need a GitHub token:
 
     export GITHUB_TOKEN=...
 
-
 ## Running it
-
-<details open>
-<summary><strong>:computer: Run locally</strong></summary>
 
 1. Select your desired repository:
     ```
@@ -124,41 +114,18 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     ```
     sage-index $GITHUB_REPO
     ```
+    To use external providers instead of running locally, set `--mode=remote`.
 
 3. Chat with the repository, once it's indexed:
     ```
     sage-chat $GITHUB_REPO
     ```
-    To get a public URL for your chat app, set `--share=true`.
-
+    To use external providers instead of running locally, set `--mode=remote`.
 </details>
 
-<details>
-<summary><strong>:cloud: Use external providers</strong></summary>
-
-1. Select your desired repository:
-    ```
-    export GITHUB_REPO=huggingface/transformers
-    ```
-
-2. Index the repository. This might take a few minutes, depending on its size.
-    ```
-    sage-index $GITHUB_REPO \
-        --embedder-type=openai \
-        --vector-store=pinecone \
-        --index-name=$PINECONE_INDEX_NAME
-    ```
-
-3. Chat with the repository, once it's indexed:
-    ```
-    sage-chat $GITHUB_REPO \
-        --vector-store-type=pinecone \
-        --index-name=$PINECONE_INDEX_NAME \
-        --llm-provider=openai \
-        --llm-model=gpt-4
-    ```
-    To get a public URL for your chat app, set `--share=true`.
-</details>
+### Notes:
+- To get a public URL for your chat app, set `--share=true`.
+- You can overwrite the default settings (e.g. desired embedding model or LLM) via command line flags. Run `sage-index --help` or `sage-chat --help` for a full list.
 
 ## Additional features
 

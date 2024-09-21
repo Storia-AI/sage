@@ -3,11 +3,11 @@
 You must run `sage-index $GITHUB_REPO` first in order to index the codebase into a vector store.
 """
 
-import argparse
 import logging
-import os
 
+import configargparse
 import gradio as gr
+import pkg_resources
 from dotenv import load_dotenv
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -15,9 +15,10 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
-import sage.vector_store as vector_store
+import sage.config as sage_config
 from sage.llm import build_llm_via_langchain
-from sage.reranker import build_reranker, RerankerProvider
+from sage.reranker import build_reranker
+from sage.vector_store import build_vector_store_from_args
 
 load_dotenv()
 
@@ -27,7 +28,7 @@ def build_rag_chain(args):
     llm = build_llm_via_langchain(args.llm_provider, args.llm_model)
 
     retriever_top_k = 5 if args.reranker_provider == "none" else 25
-    retriever = vector_store.build_from_args(args).as_retriever(top_k=retriever_top_k)
+    retriever = build_vector_store_from_args(args).as_retriever(top_k=retriever_top_k)
     compressor = build_reranker(args.reranker_provider, args.reranker_model)
     if compressor:
         retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=retriever)
@@ -70,49 +71,27 @@ def build_rag_chain(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="UI to chat with your codebase")
-    parser.add_argument("repo_id", help="The ID of the repository to index")
-    parser.add_argument("--llm-provider", default="ollama", choices=["openai", "anthropic", "ollama"])
-    parser.add_argument(
-        "--llm-model",
-        help="The LLM name. Must be supported by the provider specified via --llm-provider.",
+    parser = configargparse.ArgParser(
+        description="Batch-embeds a GitHub repository and its issues.", ignore_unknown_config_file_keys=True
     )
-    parser.add_argument("--vector-store-type", default="marqo", choices=["pinecone", "marqo"])
-    parser.add_argument("--index-name", help="Vector store index name. Required for Pinecone.")
-    parser.add_argument(
-        "--marqo-url",
-        default="http://localhost:8882",
-        help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
-    )
-    parser.add_argument("--reranker-provider", default="huggingface", choices=[r.value for r in RerankerProvider])
-    parser.add_argument(
-        "--reranker-model",
-        help="The reranker model name. When --reranker-provider=huggingface, we suggest choosing a model from the "
-        "SentenceTransformers Cross-Encoders library https://huggingface.co/cross-encoder?sort_models=downloads#models",
-    )
-    parser.add_argument(
+    parser.add(
         "--share",
         default=False,
         help="Whether to make the gradio app publicly accessible.",
     )
-    parser.add_argument(
-        "--hybrid-retrieval",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Whether to use a hybrid of vector DB + BM25 retrieval. When set to False, we only use vector DB "
-        "retrieval. This is only relevant if using Pinecone as the vector store.",
-    )
+    sage_config.add_config_args(parser)
+
+    arg_validators = [
+        sage_config.add_repo_args(parser),
+        sage_config.add_vector_store_args(parser),
+        sage_config.add_reranking_args(parser),
+        sage_config.add_llm_args(parser),
+    ]
+
     args = parser.parse_args()
 
-    if not args.llm_model:
-        if args.llm_provider == "openai":
-            args.llm_model = "gpt-4"
-        elif args.llm_provider == "anthropic":
-            args.llm_model = "claude-3-opus-20240229"
-        elif args.llm_provider == "ollama":
-            args.llm_model = "llama3.1"
-        else:
-            raise ValueError("Please specify --llm_model")
+    for validator in arg_validators:
+        validator(args)
 
     rag_chain = build_rag_chain(args)
 
