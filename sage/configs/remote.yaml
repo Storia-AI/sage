@@ -15,4 +15,3 @@ llm-model: gpt-4
 
 # Reranking
 reranker-provider: cohere
-reranker-model: rerank-english-v3.0

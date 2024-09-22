@@ -48,17 +48,18 @@ class VectorStore(ABC):
 class PineconeVectorStore(VectorStore):
     """Vector store implementation using Pinecone."""
 
-    def __init__(self, index_name: str, namespace: str, dimension: int, hybrid: bool = True):
+    def __init__(self, index_name: str, namespace: str, dimension: int, alpha: float):
         self.index_name = index_name
         self.dimension = dimension
         self.client = Pinecone()
         self.namespace = namespace
-        self.hybrid = hybrid
+        self.alpha = alpha
+        self.hybrid = (alpha < 1.0)
         # The default BM25 encoder was fit in the MS MARCO dataset.
         # See https://docs.pinecone.io/guides/data/encode-sparse-vectors
         # In the future, we should fit the encoder on the current dataset. It's somewhat non-trivial for large datasets,
         # because most BM25 implementations require the entire dataset to fit in memory.
-        self.bm25_encoder = BM25Encoder.default() if hybrid else None
+        self.bm25_encoder = BM25Encoder.default() if self.hybrid else None
 
     @cached_property
     def index(self):
@@ -106,7 +107,7 @@ class PineconeVectorStore(VectorStore):
                 index=self.index,
                 namespace=self.namespace,
                 top_k=top_k,
-                alpha=0.5,
+                alpha=self.alpha,
             )
 
         return LangChainPinecone.from_existing_index(
@@ -154,7 +155,7 @@ def build_vector_store_from_args(args: dict) -> VectorStore:
             index_name=args.pinecone_index_name,
             namespace=args.index_namespace,
             dimension=args.embedding_size if "embedding_size" in args else None,
-            hybrid=args.hybrid_retrieval,
+            alpha=args.retrieval_alpha,
         )
     elif args.vector_store_provider == "marqo":
         return MarqoVectorStore(url=args.marqo_url, index_name=args.index_namespace)

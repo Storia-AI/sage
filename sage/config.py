@@ -115,13 +115,18 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
     parser.add(
-        "--hybrid-retrieval",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Whether to use a hybrid of vector DB + BM25 retrieval. When set to False, we only use vector DB "
-        "retrieval. This is only relevant if using Pinecone as the vector store.",
+        "--retrieval-alpha",
+        default=0.5,
+        type=float,
+        help="Takes effect for Pinecone retriever only. The weight of the dense (embeddings-based) vs sparse (BM25) "
+        "encoder in the final retrieval score. A value of 0.0 means BM25 only, 1.0 means embeddings only.",
     )
-    parser.add("--retriever-top-k", default=25, help="The number of top documents to retrieve from the vector store.")
+    parser.add(
+        "--retriever-top-k",
+        default=25,
+        type=int,
+        help="The number of top documents to retrieve from the vector store."
+    )
     return validate_vector_store_args
 
 
