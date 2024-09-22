@@ -1,8 +1,10 @@
 """Vector store abstraction and implementations."""
 
+import os
+import logging
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 import marqo
 from langchain_community.retrievers import PineconeHybridSearchRetriever
@@ -14,6 +16,7 @@ from pinecone import Pinecone, ServerlessSpec
 from pinecone_text.sparse import BM25Encoder
 
 from sage.constants import TEXT_FIELD
+from sage.data_manager import DataManager
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
@@ -48,18 +51,33 @@ class VectorStore(ABC):
 class PineconeVectorStore(VectorStore):
     """Vector store implementation using Pinecone."""
 
-    def __init__(self, index_name: str, namespace: str, dimension: int, alpha: float):
+    def __init__(self, index_name: str, namespace: str, dimension: int, alpha: float, bm25_cache: Optional[str] = None):
+        """
+        Args:
+            index_name: The name of the Pinecone index to use. If it doesn't exist already, we'll create it.
+            namespace: The namespace within the index to use.
+            dimension: The dimension of the vectors.
+            alpha: The alpha parameter for hybrid search: alpha == 1.0 means pure dense search, alpha == 0.0 means pure
+                BM25, and 0.0 < alpha < 1.0 means a hybrid of the two.
+            bm25_cache: The path to the BM25 encoder file. If not specified, we'll use the default BM25 (fitted on the
+                MS MARCO dataset).
+        """
         self.index_name = index_name
         self.dimension = dimension
         self.client = Pinecone()
         self.namespace = namespace
         self.alpha = alpha
-        self.hybrid = (alpha < 1.0)
-        # The default BM25 encoder was fit in the MS MARCO dataset.
-        # See https://docs.pinecone.io/guides/data/encode-sparse-vectors
-        # In the future, we should fit the encoder on the current dataset. It's somewhat non-trivial for large datasets,
-        # because most BM25 implementations require the entire dataset to fit in memory.
-        self.bm25_encoder = BM25Encoder.default() if self.hybrid else None
+
+        if alpha < 1.0:
+            if bm25_cache and os.path.exists(bm25_cache):
+                logging.info("Loading BM25 encoder from cache.")
+                self.bm25_encoder = BM25Encoder()
+                self.bm25_encoder.load(path=bm25_cache)
+            else:
+                logging.info("Using default BM25 encoder (fitted to MS MARCO).")
+                self.bm25_encoder = BM25Encoder.default()
+        else:
+            self.bm25_encoder = None
 
     @cached_property
     def index(self):
@@ -85,7 +103,7 @@ class PineconeVectorStore(VectorStore):
                 name=self.index_name,
                 dimension=self.dimension,
                 # See https://www.pinecone.io/learn/hybrid-search-intro/
-                metric="dotproduct" if self.hybrid else "cosine",
+                metric="dotproduct" if self.bm25_encoder else "cosine",
                 spec=ServerlessSpec(cloud="aws", region="us-east-1"),
             )
 
@@ -148,14 +166,32 @@ class MarqoVectorStore(VectorStore):
         return vectorstore.as_retriever(search_kwargs={"k": top_k})
 
 
-def build_vector_store_from_args(args: dict) -> VectorStore:
-    """Builds a vector store from the given command-line arguments."""
+def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager] = None) -> VectorStore:
+    """Builds a vector store from the given command-line arguments.
+
+    When `data_manager` is specified and hybrid retrieval is requested, we'll use it to fit a BM25 encoder on the corpus
+    of documents.
+    """
     if args.vector_store_provider == "pinecone":
+        bm25_cache = os.path.join(".bm25_cache", args.index_namespace, "bm25_encoder.json")
+
+        if not os.path.exists(bm25_cache) and data_manager:
+            logging.info("Fitting BM25 encoder on the corpus...")
+            corpus = [content for content, _ in data_manager.walk()]
+            bm25_encoder = BM25Encoder()
+            bm25_encoder.fit(corpus)
+            # Make sure the folder exists, before we dump the encoder.
+            bm25_folder = os.path.dirname(bm25_cache)
+            if not os.path.exists(bm25_folder):
+                os.makedirs(bm25_folder)
+            bm25_encoder.dump(bm25_cache)
+
         return PineconeVectorStore(
             index_name=args.pinecone_index_name,
             namespace=args.index_namespace,
             dimension=args.embedding_size if "embedding_size" in args else None,
             alpha=args.retrieval_alpha,
+            bm25_cache=bm25_cache,
         )
     elif args.vector_store_provider == "marqo":
         return MarqoVectorStore(url=args.marqo_url, index_name=args.index_namespace)

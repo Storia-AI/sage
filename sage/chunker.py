@@ -299,6 +299,7 @@ class UniversalFileChunker(Chunker):
     """Chunks a file into smaller pieces, regardless of whether it's code or text."""
 
     def __init__(self, max_tokens: int):
+        self.max_tokens = max_tokens
         self.code_chunker = CodeFileChunker(max_tokens)
         self.ipynb_chunker = IpynbFileChunker(self.code_chunker)
         self.text_chunker = TextFileChunker(max_tokens)

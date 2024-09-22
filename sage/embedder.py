@@ -9,7 +9,9 @@ from collections import Counter
 from typing import Dict, Generator, List, Optional, Tuple
 
 import marqo
+import requests
 from openai import OpenAI
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from sage.chunker import Chunk, Chunker
 from sage.constants import TEXT_FIELD
@@ -205,6 +207,72 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         }
 
 
+class VoyageBatchEmbedder(BatchEmbedder):
+    """Batch embedder that calls Voyage. See https://docs.voyageai.com/reference/embeddings-api."""
+
+    def __init__(self, data_manager: DataManager, chunker: Chunker, embedding_model: str):
+        self.data_manager = data_manager
+        self.chunker = chunker
+        self.embedding_model = embedding_model
+        self.embedding_data = []
+
+    def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
+        """Issues batch embedding jobs for the entire dataset."""
+        batch = []
+        chunk_count = 0
+
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
+            chunk_count += len(chunks)
+            batch.extend(chunks)
+
+            token_count = chunk_count * self.chunker.max_tokens
+            if token_count % 900_000 == 0:
+                logging.info("Pausing for 60 seconds to avoid rate limiting...")
+                time.sleep(60)  # Voyage API rate limits to 1m tokens per minute; we'll pause every 900k tokens.
+
+            if len(batch) > chunks_per_batch:
+                for i in range(0, len(batch), chunks_per_batch):
+                    sub_batch = batch[i : i + chunks_per_batch]
+                    logging.info("Embedding %d chunks...", len(sub_batch))
+                    result = self._make_batch_request(sub_batch)
+                    for chunk, datum in zip(sub_batch, result["data"]):
+                        self.embedding_data.append((chunk.metadata, datum["embedding"]))
+                batch = []
+
+        # Finally, commit the last batch.
+        if batch:
+            logging.info("Embedding %d chunks...", len(batch))
+            result = self._make_batch_request(batch)
+            for chunk, datum in zip(batch, result["data"]):
+                self.embedding_data.append((chunk.metadata, datum["embedding"]))
+
+        logging.info(f"Successfully embedded {chunk_count} chunks.")
+
+    def embeddings_are_ready(self, *args, **kwargs) -> bool:
+        """Checks whether the batch embedding jobs are done."""
+        # The Voyage API is synchronous, so once embed_dataset() returns, the embeddings are ready.
+        return True
+
+    def download_embeddings(self, *args, **kwargs) -> Generator[Vector, None, None]:
+        """Yields (chunk_metadata, embedding) pairs for each chunk in the dataset."""
+        for chunk_metadata, embedding in self.embedding_data:
+            yield (chunk_metadata, embedding)
+
+    @retry(wait=wait_random_exponential(multiplier=1, max=60), stop=stop_after_attempt(6))
+    def _make_batch_request(self, chunks: List[Chunk]) -> Dict:
+        """Makes a batch request to the Voyage API with exponential backoff when we hit rate limits."""
+        url = "https://api.voyageai.com/v1/embeddings"
+        headers = {"Authorization": f"Bearer {os.environ['VOYAGE_API_KEY']}", "Content-Type": "application/json"}
+        payload = {"input": [chunk.content for chunk in chunks], "model": self.embedding_model}
+
+        response = requests.post(url, json=payload, headers=headers)
+        if not response.status_code == 200:
+            raise ValueError(f"Failed to make batch request. Response: {response.text}")
+
+        return response.json()
+
+
 class MarqoEmbedder(BatchEmbedder):
     """Embedder that uses the open-source Marqo vector search engine.
 
@@ -270,6 +338,8 @@ class MarqoEmbedder(BatchEmbedder):
 def build_batch_embedder_from_flags(data_manager: DataManager, chunker: Chunker, args) -> BatchEmbedder:
     if args.embedding_provider == "openai":
         return OpenAIBatchEmbedder(data_manager, chunker, args.local_dir, args.embedding_model, args.embedding_size)
+    elif args.embedding_provider == "voyage":
+        return VoyageBatchEmbedder(data_manager, chunker, args.embedding_model)
     elif args.embedding_provider == "marqo":
         return MarqoEmbedder(
             data_manager, chunker, index_name=args.index_namespace, url=args.marqo_url, model=args.embedding_model
