@@ -7,18 +7,15 @@ import logging
 
 import configargparse
 import gradio as gr
-import pkg_resources
 from dotenv import load_dotenv
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.retrievers import ContextualCompressionRetriever
 from langchain.schema import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 import sage.config as sage_config
 from sage.llm import build_llm_via_langchain
-from sage.reranker import build_reranker
-from sage.vector_store import build_vector_store_from_args
+from sage.retriever import build_retriever_from_args
 
 load_dotenv()
 
@@ -26,12 +23,7 @@ load_dotenv()
 def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = build_llm_via_langchain(args.llm_provider, args.llm_model)
-
-    retriever_top_k = 5 if args.reranker_provider == "none" else 25
-    retriever = build_vector_store_from_args(args).as_retriever(top_k=retriever_top_k)
-    compressor = build_reranker(args.reranker_provider, args.reranker_model)
-    if compressor:
-        retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=retriever)
+    retriever = build_retriever_from_args(args)
 
     # Prompt to contextualize the latest query based on the chat history.
     contextualize_q_system_prompt = (
@@ -83,6 +75,7 @@ def main():
 
     arg_validators = [
         sage_config.add_repo_args(parser),
+        sage_config.add_embedding_args(parser),
         sage_config.add_vector_store_args(parser),
         sage_config.add_reranking_args(parser),
         sage_config.add_llm_args(parser),

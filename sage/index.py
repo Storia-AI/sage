@@ -90,7 +90,7 @@ def main():
             time.sleep(30)
 
         logging.info("Moving embeddings to the repo vector store...")
-        repo_vector_store = build_vector_store_from_args(args)
+        repo_vector_store = build_vector_store_from_args(args, repo_manager)
         repo_vector_store.ensure_exists()
         repo_vector_store.upsert(repo_embedder.download_embeddings(repo_jobs_file))
 
@@ -101,7 +101,7 @@ def main():
             time.sleep(30)
 
         logging.info("Moving embeddings to the issues vector store...")
-        issues_vector_store = build_vector_store_from_args(args)
+        issues_vector_store = build_vector_store_from_args(args, issues_manager)
         issues_vector_store.ensure_exists()
         issues_vector_store.upsert(issues_embedder.download_embeddings(issues_jobs_file))
 

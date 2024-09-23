@@ -28,6 +28,25 @@ OPENAI_DEFAULT_EMBEDDING_SIZE = {
     "text-embedding-3-large": 3072,
 }
 
+VOYAGE_MAX_CHUNKS_PER_BATCH = 128
+
+def get_voyage_max_tokens_per_batch(model: str) -> int:
+    """Returns the maximum number of tokens per batch for the Voyage model.
+    See https://docs.voyageai.com/reference/embeddings-api."""
+    if model == "voyage-3-lite":
+        return 1_000_000
+    if model in ["voyage-3", "voyage-2"]:
+        return 320_000
+    return 120_000
+
+def get_voyage_embedding_size(model: str) -> int:
+    """Returns the embedding size for the Voyage model. See https://docs.voyageai.com/docs/embeddings#model-choices."""
+    if model == "voyage-3-lite":
+        return 512
+    if model == "voyage-2-code":
+        return 1536
+    return 1024
+
 
 def add_config_args(parser: ArgumentParser):
     """Adds configuration-related arguments to the parser."""
@@ -61,7 +80,7 @@ def add_repo_args(parser: ArgumentParser) -> Callable:
 
 def add_embedding_args(parser: ArgumentParser) -> Callable:
     """Adds embedding-related arguments to the parser and returns a validator."""
-    parser.add("--embedding-provider", default="marqo", choices=["openai", "marqo"])
+    parser.add("--embedding-provider", default="marqo", choices=["openai", "voyage", "marqo"])
     parser.add(
         "--embedding-model",
         type=str,
@@ -115,11 +134,17 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
         help="URL for the Marqo server. Required if using Marqo as embedder or vector store.",
     )
     parser.add(
-        "--hybrid-retrieval",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Whether to use a hybrid of vector DB + BM25 retrieval. When set to False, we only use vector DB "
-        "retrieval. This is only relevant if using Pinecone as the vector store.",
+        "--retrieval-alpha",
+        default=0.5,
+        type=float,
+        help="Takes effect for Pinecone retriever only. The weight of the dense (embeddings-based) vs sparse (BM25) "
+        "encoder in the final retrieval score. A value of 0.0 means BM25 only, 1.0 means embeddings only.",
+    )
+    parser.add(
+        "--retriever-top-k",
+        default=25,
+        type=int,
+        help="The number of top documents to retrieve from the vector store."
     )
     return validate_vector_store_args
 
@@ -169,6 +194,7 @@ def add_reranking_args(parser: ArgumentParser) -> Callable:
         help="The reranker model name. When --reranker-provider=huggingface, we suggest choosing a model from the "
         "SentenceTransformers Cross-Encoders library https://huggingface.co/cross-encoder?sort_models=downloads#models",
     )
+    parser.add("--reranker-top-k", default=5, help="The number of top documents to return after reranking.")
     # Trivial validator (nothing to check).
     return lambda _: True
 
@@ -228,6 +254,33 @@ def _validate_openai_embedding_args(args):
         raise ValueError(f"The maximum number of chunks per job is {OPENAI_MAX_TOKENS_PER_JOB}. Got {chunks_per_job}")
 
 
+def _validate_voyage_embedding_args(args):
+    """Validates the configuration of the Voyage batch embedder and sets defaults."""
+    if args.embedding_provider == "voyage" and not os.getenv("VOYAGE_API_KEY"):
+        raise ValueError("Please set the VOYAGE_API_KEY environment variable.")
+
+    if not args.embedding_model:
+        args.embedding_model = "voyage-code-2"
+
+    if not args.tokens_per_chunk:
+        # https://arxiv.org/pdf/2406.14497 recommends a value between 200-800.
+        args.tokens_per_chunk = 800
+
+    if not args.chunks_per_batch:
+        args.chunks_per_batch = VOYAGE_MAX_CHUNKS_PER_BATCH
+    elif args.chunks_per_batch > VOYAGE_MAX_CHUNKS_PER_BATCH:
+        args.chunks_per_batch = VOYAGE_MAX_CHUNKS_PER_BATCH
+        logging.warning(f"Voyage enforces a limit of {VOYAGE_MAX_CHUNKS_PER_BATCH} chunks per batch. Overwriting.")
+
+    max_tokens = get_voyage_max_tokens_per_batch(args.embedding_model)
+    if args.tokens_per_chunk * args.chunks_per_batch > max_tokens:
+        raise ValueError(f"Voyage enforces a limit of {max_tokens} tokens per batch. "
+                         "Reduce either --tokens-per-chunk or --chunks-per-batch.")
+
+    if not args.embedding_size:
+        args.embedding_size = get_voyage_embedding_size(args.embedding_model)
+
+
 def _validate_marqo_embedding_args(args):
     """Validates the configuration of the Marqo batch embedder and sets defaults."""
     if not args.embedding_model:
@@ -247,6 +300,8 @@ def validate_embedding_args(args):
     """Validates the configuration of the batch embedder and sets defaults."""
     if args.embedding_provider == "openai":
         _validate_openai_embedding_args(args)
+    elif args.embedding_provider == "voyage":
+        _validate_voyage_embedding_args(args)
     elif args.embedding_provider == "marqo":
         _validate_marqo_embedding_args(args)
     else:
@@ -257,8 +312,11 @@ def validate_vector_store_args(args):
     """Validates the configuration of the vector store and sets defaults."""
 
     if not args.index_namespace:
+        # Attempt to derive a default index namespace from the repository information.
+        if "repo_id" not in args:
+            raise ValueError("Please set a value for --index-namespace.")
         args.index_namespace = args.repo_id
-        if args.commit_hash:
+        if "commit_hash" in args and args.commit_hash:
             args.index_namespace += "/" + args.commit_hash
         if args.vector_store_provider == "marqo":
             # Marqo doesn't allow slashes in the index namespace.

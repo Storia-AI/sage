@@ -14,5 +14,4 @@ llm-provider: openai
 llm-model: gpt-4
 
 # Reranking
-reranking-provider: cohere
-reranking-model: rerank-english-v3.0
+reranker-provider: nvidia
