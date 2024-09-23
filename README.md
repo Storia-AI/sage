@@ -72,22 +72,28 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 <details>
 <summary><strong>:cloud: Using external providers (higher quality)</strong></summary>
 
-1. We support <a href="https://openai.com/">OpenAI</a> for embeddings (they have a super fast batch embedding API) and <a href="https://www.pinecone.io/">Pinecone</a> for the vector store. So you will need two API keys:
+1. For embeddings, we support <a href="https://platform.openai.com/docs/guides/embeddings">OpenAI</a> and <a href="https://docs.voyageai.com/docs/embeddings">Voyage</a>. According to [our experiments](benchmarks/retrieval/README.md), OpenAI is better quality. Their batch API is also faster, with more generous rate limits. Export the API key of the desired provider:
 
     ```
-    export OPENAI_API_KEY=...
+    export OPENAI_API_KEY=... # or
+    export VOYAGE_API_KEY=...
+    ```
+
+2. We use <a href="https://www.pinecone.io/">Pinecone</a> for the vector store, so you will need an API key:
+
+    ```
     export PINECONE_API_KEY=...
     ```
-
-2. Create a Pinecone account. Export the desired index name (if it doesn't exist yet, we'll create it):
+    If you want to reuse an existing Pinecone index, specify it. Otherwise we'll create a new one called `sage`.
     ```
     export PINECONE_INDEX_NAME=...
     ```
 
-3. For reranking, we use <a href="https://cohere.com/rerank">Cohere</a> by default, but you can also try rerankers from <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a> or <a href="https://jina.ai/reranker/">Jina</a>:
+3. For reranking, we support <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a>, <a href="https://docs.voyageai.com/docs/reranker">Voyage</a>, <a href="https://cohere.com/rerank">Cohere</a>, and <a href="https://jina.ai/reranker/">Jina</a>. According to [our experiments](benchmark/retrieval/README.md), NVIDIA performs best. Export the API key of the desired provider:
     ```
-    export COHERE_API_KEY=...  # or
     export NVIDIA_API_KEY=...  # or
+    export VOYAGE_API_KEY=...  # or
+    export COHERE_API_KEY=...  # or
     export JINA_API_KEY=...
     ```
 
