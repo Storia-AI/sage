@@ -8,6 +8,7 @@ from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from langchain_community.document_compressors import JinaRerank
 from langchain_core.documents import BaseDocumentCompressor
 from langchain_nvidia_ai_endpoints import NVIDIARerank
+from langchain_voyageai import VoyageAIRerank
 
 
 class RerankerProvider(Enum):
@@ -16,6 +17,7 @@ class RerankerProvider(Enum):
     COHERE = "cohere"
     NVIDIA = "nvidia"
     JINA = "jina"
+    VOYAGE = "voyage"
 
 
 def build_reranker(provider: str, model: Optional[str] = None, top_k: Optional[int] = 5) -> BaseDocumentCompressor:
@@ -39,4 +41,9 @@ def build_reranker(provider: str, model: Optional[str] = None, top_k: Optional[i
         if not os.environ.get("JINA_API_KEY"):
             raise ValueError("Please set the JINA_API_KEY environment variable")
         return JinaRerank(top_n=top_k)
+    if provider == RerankerProvider.VOYAGE.value:
+        if not os.environ.get("VOYAGE_API_KEY"):
+            raise ValueError("Please set the VOYAGE_API_KEY environment variable")
+        model = model or "rerank-1"
+        return VoyageAIRerank(model=model, api_key=os.environ.get("VOYAGE_API_KEY"), top_k=top_k)
     raise ValueError(f"Invalid reranker provider: {provider}")
