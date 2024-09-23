@@ -11,7 +11,8 @@ Here you will find our first learnings enabled by this dataset. We focused on pr
 - OpenAI's `text-embedding-3-small` embeddings perform best.
 - NVIDIA's reranker outperforms Cohere, Voyage and Jina.
 - Sparse retrieval (e.g. BM25) is actively hurting code retrieval if you have natural language files in your index (e.g. Markdown).
-- Chunks of size 800 are ideal; going smaller very has marginal gains.
+- Chunks of size 800 are ideal; going smaller has very marginal gains.
+- Going beyond `top_k=25` for retrieval has diminishing returns.
 
 And now, if you want to nerd out, here's a bunch of plots and stats.
 
@@ -39,6 +40,14 @@ Indeed, there are already comprehensive code retrieval benchmarks like [CoIR](ht
 However, we designed our document space to be *an entire codebase*, as opposed to a set of isolated Python functions. A real-world codebase contains a variety of files, including ones that are distracting and get undeservedly selected by the retriever. For instance, dense retrievers tend to prefer short files. READMEs also tend to score high even when irrelevant, since they're written in natural language. Our benchmark is able to surface such behaviors. It also allows us to experiment with a variety of strategies like file chunking.
 
 In the rest of this document, we'll be sharing a few initial learnings enabled by our benchmark.
+
+### Metrics
+
+Throughout this report, we will use the following evaluation metrics, as implemented by the [ir-measures](https://ir-measur.es/en/latest/) library.
+- [R-Precision](https://ir-measur.es/en/latest/measures.html#rprec): The precision at R, where R is the number of relevant documents for a given query. Since our queries have a variable number of relevant documents (1-3), this is a convenient metric.
+- [Precision@1 (P@1)](https://ir-measur.es/en/latest/measures.html#p): Reflects how many of the documents retrieved on the first position are actually golden documents. Note that P@3 would be a misleading metric: since not all queries have 3 relevant documents, not even the golden dataset would score 100%.
+- [Recall@3 (R@3)](https://ir-measur.es/en/latest/measures.html#r): Reflects how many of the golden documents were retrieved by the system. Note that R@1 would be a misleading metric: since a query can have multiple equally-relevant documents, not even the golden dataset would score 100%.
+- [Mean Reciprocal Rank (MRR)](https://ir-measur.es/en/latest/measures.html#rr): For each query, takes the first golden document and looks up its rank in the retrieved documents. For instance, if the first golden document is retrieved second, the score for this query is 1/2. Note this metric is somewhat incomplete for our benchmark, because we might have multiple relevant documents.
 
 ## Embeddings
 :classical_building: **Verdict**: Use OpenAI's `text-embedding-3-small` embeddings.
@@ -121,6 +130,3 @@ The plot below shows what percentage of the retrieved files are in Markdown. The
 The [CodeRag paper](https://arxiv.org/pdf/2406.14497) suggests that the ideal chunk size is somewhere between 200-800 tokens. All our experiments above used 800 tokens per chunk. When experimenting with the other end of the spectrum, we saw very mild improvements from having smaller chunks. We believe that these marginal gains are not worth the increased indexing time (since we need to send 4x more queries to the batch embedding APIs).
 
 ![chunks-plot](assets/chunks.png)
-
-## Disclaimer
-Please take everything with a grain of salt. This is not a research paper (yet). If it was, you'd be reading it on arxiv. It's more of a rough guide that helps you binary-search your way into a good enough start. The road ahead is long!
