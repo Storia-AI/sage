@@ -4,13 +4,19 @@ Make sure to `pip install ir_measures` before running this script.
 """
 
 import json
+import logging
 import os
+import time
 
 import configargparse
 from ir_measures import MAP, MRR, P, Qrel, R, Rprec, ScoredDoc, calc_aggregate, nDCG
 
 import sage.config
 from sage.retriever import build_retriever_from_args
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def main():
@@ -24,7 +30,11 @@ def main():
     parser.add(
         "--question-field", default="question", help="Field in the benchmark dataset that contains the questions."
     )
-    parser.add("--output-file", required=True, help="Path to output file, where predictions and metrics will be saved.")
+    parser.add(
+        "--logs-dir",
+        default=None,
+        help="Path where to output predictions and metrics. Optional, since metrics are also printed to console."
+    )
     parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
 
     sage.config.add_config_args(parser)
@@ -75,23 +85,23 @@ def main():
     results = calc_aggregate([Rprec, P @ 1, R @ 3, nDCG @ 3, MAP, MRR], golden_docs, retrieved_docs)
     results = {str(key): value for key, value in results.items()}
 
-    print("Saving results...")
-    # Save the results to file.
-    output_dir = os.path.dirname(args.output_file)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if args.logs_dir:
+        if not os.path.exists(args.logs_dir):
+            os.makedirs(args.logs_dir)
 
-    out_data = {
-        "data": benchmark,
-        "metrics": results,
-        "flags": vars(args),  # For reproducibility.
-    }
-    with open(args.output_file, "w") as f:
-        json.dump(out_data, f, indent=4)
+        out_data = {
+            "data": benchmark,
+            "metrics": results,
+            "flags": vars(args),  # For reproducibility.
+        }
 
-    for key in sorted(results.keys()):
-        print(f"{key}: {results[key]}")
-    print(f"Results saved to {args.output_file}")
+        output_file = os.path.join(args.logs_dir, f"{time.time()}.json")
+        with open(output_file, "w") as f:
+            json.dump(out_data, f, indent=4)
+
+        for key in sorted(results.keys()):
+            print(f"{key}: {results[key]}")
+        print(f"Predictions and metrics saved to {output_file}")
 
 
 if __name__ == "__main__":
