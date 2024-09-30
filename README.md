@@ -136,6 +136,15 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 ## Additional features
 
 <details>
+<summary><strong>:lock: Working with private repositories</strong></summary>
+To index and chat with a private repository, simply set the GITHUB_TOKEN environment variable. To obtain this token: go to github.com > click on your profile icon > Settings > Developer settings > Personal access tokens. You can either make a fine-grained token for the desired repository, or a classic token.
+
+```
+export GITHUB_TOKEN=...
+```
+</details>
+
+<details>
 <summary><strong>:hammer_and_wrench: Control which files get indexed</strong></summary>
 
 You can specify an inclusion or exclusion file in the following format:
