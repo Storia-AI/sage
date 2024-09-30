@@ -180,6 +180,7 @@ By default, we use the exclusion file [sample-exclude.txt](sage/sample-exclude.t
 <details>
 <summary><strong>:bug: Index open GitHub issues</strong></summary>
 You will need a GitHub token first:
+
 ```
 export GITHUB_TOKEN=...
 ```
