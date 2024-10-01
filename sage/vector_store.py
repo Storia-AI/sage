@@ -89,7 +89,8 @@ class PineconeVectorStore(VectorStore):
         def patched_query(*args, **kwargs):
             result = original_query(*args, **kwargs)
             for res in result["matches"]:
-                res["metadata"]["context"] = res["metadata"][TEXT_FIELD]
+                if TEXT_FIELD in res["metadata"]:
+                    res["metadata"]["context"] = res["metadata"][TEXT_FIELD]
             return result
 
         index.query = patched_query
