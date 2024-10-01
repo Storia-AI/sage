@@ -92,7 +92,7 @@ def main():
         logging.info("Moving embeddings to the repo vector store...")
         repo_vector_store = build_vector_store_from_args(args, repo_manager)
         repo_vector_store.ensure_exists()
-        repo_vector_store.upsert(repo_embedder.download_embeddings(repo_jobs_file))
+        repo_vector_store.upsert(repo_embedder.download_embeddings(repo_jobs_file), namespace=args.index_namespace)
 
     if issues_embedder is not None:
         logging.info("Waiting for issue embeddings to be ready...")
@@ -103,7 +103,9 @@ def main():
         logging.info("Moving embeddings to the issues vector store...")
         issues_vector_store = build_vector_store_from_args(args, issues_manager)
         issues_vector_store.ensure_exists()
-        issues_vector_store.upsert(issues_embedder.download_embeddings(issues_jobs_file))
+        issues_vector_store.upsert(
+            issues_embedder.download_embeddings(issues_jobs_file), namespace=args.index_namespace
+        )
 
     logging.info("Done!")
 
