@@ -1,7 +1,6 @@
 """GitHub-specific implementations for DataManager and Chunker."""
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, Generator, List, Tuple
 
@@ -47,12 +46,12 @@ class GitHubIssue:
 class GitHubIssuesManager(DataManager):
     """Class to manage the GitHub issues of a particular repository."""
 
-    def __init__(self, repo_id: str, index_comments: bool = False, max_issues: int = None):
+    def __init__(self, repo_id: str, access_token: str, index_comments: bool = False, max_issues: int = None):
         super().__init__(dataset_id=repo_id + "/issues")
         self.repo_id = repo_id
         self.index_comments = index_comments
         self.max_issues = max_issues
-        self.access_token = os.getenv("GITHUB_TOKEN")
+        self.access_token = access_token
         if not self.access_token:
             raise ValueError("Please set the GITHUB_TOKEN environment variable when indexing GitHub issues.")
         self.issues = []

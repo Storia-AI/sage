@@ -30,6 +30,7 @@ class GitHubRepoManager(DataManager):
         self,
         repo_id: str,
         commit_hash: str = None,
+        access_token: str = None,
         local_dir: str = None,
         inclusion_file: str = None,
         exclusion_file: str = None,
@@ -38,6 +39,7 @@ class GitHubRepoManager(DataManager):
         Args:
             repo_id: The identifier of the repository in owner/repo format, e.g. "Storia-AI/sage".
             commit_hash: Optional commit hash to checkout. If not specified, we pull the latest version of the repo.
+            access_token: A GitHub access token to use for cloning private repositories. Not needed for public repos.
             local_dir: The local directory where the repository will be cloned.
             inclusion_file: A file with a lists of files/directories/extensions to include. Each line must be in one of
                 the following formats: "ext:.my-extension", "file:my-file.py", or "dir:my-directory".
@@ -47,6 +49,7 @@ class GitHubRepoManager(DataManager):
         super().__init__(dataset_id=repo_id)
         self.repo_id = repo_id
         self.commit_hash = commit_hash
+        self.access_token = access_token
 
         self.local_dir = local_dir or "/tmp/"
         if not os.path.exists(self.local_dir):
@@ -56,8 +59,6 @@ class GitHubRepoManager(DataManager):
         self.log_dir = os.path.join(self.local_dir, "logs", repo_id)
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
-
-        self.access_token = os.getenv("GITHUB_TOKEN")
 
         if inclusion_file and exclusion_file:
             raise ValueError("Only one of inclusion_file or exclusion_file should be provided.")
