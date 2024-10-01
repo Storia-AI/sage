@@ -89,7 +89,9 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     export PINECONE_INDEX_NAME=...
     ```
 
-3. For reranking, we support <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a>, <a href="https://docs.voyageai.com/docs/reranker">Voyage</a>, <a href="https://cohere.com/rerank">Cohere</a>, and <a href="https://jina.ai/reranker/">Jina</a>. According to [our experiments](benchmark/retrieval/README.md), NVIDIA performs best. Export the API key of the desired provider:
+3. For reranking, we support <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a>, <a href="https://docs.voyageai.com/docs/reranker">Voyage</a>, <a href="https://cohere.com/rerank">Cohere</a>, and <a href="https://jina.ai/reranker/">Jina</a>. According to [our experiments](benchmark/retrieval/README.md), NVIDIA performs best. Note: for NVIDIA you should use the `nvidia/nv-rerankqa-mistral-4b-v3` reranker. 
+
+Export the API key of the desired provider:
     ```
     export NVIDIA_API_KEY=...  # or
     export VOYAGE_API_KEY=...  # or
@@ -102,6 +104,19 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     export ANTHROPIC_API_KEY=...
     ```
 
+For easier configuration, create a `.sage-env` file with the following contents (change the API keys names based on your desired setup):
+```
+# Embeddings
+export OPENAI_API_KEY=
+# Vector store
+export PINECONE_API_KEY=
+# Reranking
+export NVIDIA_API_KEY=
+# Generation LLM
+export ANTHROPIC_API_KEY=
+# Github issues
+export GITHUB_TOKEN=
+```
 </details>
 
 ### Optional
