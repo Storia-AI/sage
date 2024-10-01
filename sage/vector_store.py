@@ -12,6 +12,7 @@ from langchain_community.vectorstores import Marqo
 from langchain_community.vectorstores import Pinecone as LangChainPinecone
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from nltk.data import find
 from pinecone import Pinecone, ServerlessSpec
 from pinecone_text.sparse import BM25Encoder
 
@@ -20,6 +21,12 @@ from sage.data_manager import DataManager
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
+def is_punkt_downloaded():
+    try:
+        find('tokenizers/punkt_tab')
+        return True
+    except LookupError:
+        return False
 
 class VectorStore(ABC):
     """Abstract class for a vector store."""
@@ -71,6 +78,13 @@ class PineconeVectorStore(VectorStore):
         if alpha < 1.0:
             if bm25_cache and os.path.exists(bm25_cache):
                 logging.info("Loading BM25 encoder from cache.")
+                # We need nltk tokenizers for bm25 tokenization
+                if is_punkt_downloaded():
+                    print("punkt is already downloaded")
+                else:
+                    print("punkt is not downloaded")
+                    # Optionally download it
+                    nltk.download('punkt_tab')
                 self.bm25_encoder = BM25Encoder()
                 self.bm25_encoder.load(path=bm25_cache)
             else:

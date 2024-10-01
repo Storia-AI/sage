@@ -104,18 +104,9 @@ Export the API key of the desired provider:
     export ANTHROPIC_API_KEY=...
     ```
 
-For easier configuration, create a `.sage-env` file with the following contents (change the API keys names based on your desired setup):
+For easier configuration, adapt the entries within the sample `.sage-env` (change the API keys names based on your desired setup) and run:
 ```
-# Embeddings
-export OPENAI_API_KEY=
-# Vector store
-export PINECONE_API_KEY=
-# Reranking
-export NVIDIA_API_KEY=
-# Generation LLM
-export ANTHROPIC_API_KEY=
-# Github issues
-export GITHUB_TOKEN=
+source .sage-env
 ```
 </details>
 

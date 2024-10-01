@@ -14,19 +14,9 @@ from sage.embedder import build_batch_embedder_from_flags
 from sage.github import GitHubIssuesChunker, GitHubIssuesManager
 from sage.vector_store import build_vector_store_from_args
 
-
-from nltk.data import find
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-def is_punkt_downloaded():
-    try:
-        find('tokenizers/punkt_tab')
-        return True
-    except LookupError:
-        return False
 
 
 def main():
@@ -53,14 +43,7 @@ def main():
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
 
-    # We need nltk tokenizers for 
-    if is_punkt_downloaded():
-        print("punkt is already downloaded")
-    else:
-        print("punkt is not downloaded")
-        # Optionally download it
-        nltk.download('punkt_tab')
-
+    
     ######################
     # Step 1: Embeddings #
     ######################
