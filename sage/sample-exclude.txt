@@ -71,6 +71,7 @@ ext:.tgz
 ext:.th
 ext:.toml
 ext:.ts-fixture
+ext:.tsv
 ext:.ttf
 ext:.wav
 ext:.webp
