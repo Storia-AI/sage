@@ -8,6 +8,7 @@ dir:legacy
 dir:library-tests
 dir:logo
 dir:logs
+dir:migrations
 dir:node_modules
 dir:old-change-notes
 dir:test
