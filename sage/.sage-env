@@ -1,0 +1,10 @@
+# Embeddings
+export OPENAI_API_KEY=
+# Vector store
+export PINECONE_API_KEY=
+# Reranking
+export NVIDIA_API_KEY=
+# Generation LLM
+export ANTHROPIC_API_KEY=
+# Github issues
+export GITHUB_TOKEN=

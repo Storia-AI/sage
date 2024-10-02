@@ -42,6 +42,7 @@ def main():
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
 
+    
     ######################
     # Step 1: Embeddings #
     ######################
