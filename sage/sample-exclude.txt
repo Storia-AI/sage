@@ -1,4 +1,5 @@
 # This list tends to be overly-aggressive. We're assuming by default devs are most interested in code files, not configs.
+dir:alembic
 dir:deprecated
 dir:docker
 dir:downgrades
