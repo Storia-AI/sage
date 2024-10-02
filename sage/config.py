@@ -30,6 +30,7 @@ OPENAI_DEFAULT_EMBEDDING_SIZE = {
 
 VOYAGE_MAX_CHUNKS_PER_BATCH = 128
 
+
 def get_voyage_max_tokens_per_batch(model: str) -> int:
     """Returns the maximum number of tokens per batch for the Voyage model.
     See https://docs.voyageai.com/reference/embeddings-api."""
@@ -38,6 +39,7 @@ def get_voyage_max_tokens_per_batch(model: str) -> int:
     if model in ["voyage-3", "voyage-2"]:
         return 320_000
     return 120_000
+
 
 def get_voyage_embedding_size(model: str) -> int:
     """Returns the embedding size for the Voyage model. See https://docs.voyageai.com/docs/embeddings#model-choices."""
@@ -141,10 +143,7 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
         "encoder in the final retrieval score. A value of 0.0 means BM25 only, 1.0 means embeddings only.",
     )
     parser.add(
-        "--retriever-top-k",
-        default=25,
-        type=int,
-        help="The number of top documents to retrieve from the vector store."
+        "--retriever-top-k", default=25, type=int, help="The number of top documents to retrieve from the vector store."
     )
     return validate_vector_store_args
 
@@ -274,8 +273,10 @@ def _validate_voyage_embedding_args(args):
 
     max_tokens = get_voyage_max_tokens_per_batch(args.embedding_model)
     if args.tokens_per_chunk * args.chunks_per_batch > max_tokens:
-        raise ValueError(f"Voyage enforces a limit of {max_tokens} tokens per batch. "
-                         "Reduce either --tokens-per-chunk or --chunks-per-batch.")
+        raise ValueError(
+            f"Voyage enforces a limit of {max_tokens} tokens per batch. "
+            "Reduce either --tokens-per-chunk or --chunks-per-batch."
+        )
 
     if not args.embedding_size:
         args.embedding_size = get_voyage_embedding_size(args.embedding_model)
@@ -319,8 +320,8 @@ def validate_vector_store_args(args):
         if "commit_hash" in args and args.commit_hash:
             args.index_namespace += "/" + args.commit_hash
         if args.vector_store_provider == "marqo":
-            # Marqo doesn't allow slashes in the index namespace.
-            args.index_namespace = args.index_namespace.replace("/", "_")
+            # Marqo namespaces must match this pattern: [a-zA-Z_-][a-zA-Z0-9_-]*
+            args.index_namespace = re.sub(r"[^a-zA-Z0-9_-]", "_", args.index_namespace)
 
     if args.vector_store_provider == "marqo":
         if not args.marqo_url:
