@@ -1,11 +1,10 @@
 """Runs a batch job to compute embeddings for an entire repo and stores them into a vector store."""
 
 import logging
-import nltk
+import os
 import time
 
 import configargparse
-import pkg_resources
 
 import sage.config as sage_config
 from sage.chunker import UniversalFileChunker
@@ -55,6 +54,7 @@ def main():
         repo_manager = GitHubRepoManager(
             args.repo_id,
             commit_hash=args.commit_hash,
+            access_token=os.getenv("GITHUB_TOKEN"),
             local_dir=args.local_dir,
             inclusion_file=args.include,
             exclusion_file=args.exclude,
@@ -69,7 +69,9 @@ def main():
     issues_embedder = None
     if args.index_issues:
         logging.info("Issuing embedding jobs for GitHub issues...")
-        issues_manager = GitHubIssuesManager(args.repo_id, index_comments=args.index_issue_comments)
+        issues_manager = GitHubIssuesManager(
+            args.repo_id, access_token=os.getenv("GITHUB_TOKEN"), index_comments=args.index_issue_comments
+        )
         issues_manager.download()
         logging.info("Embedding GitHub issues...")
         chunker = GitHubIssuesChunker(max_tokens=args.tokens_per_chunk)
@@ -94,7 +96,7 @@ def main():
         logging.info("Moving embeddings to the repo vector store...")
         repo_vector_store = build_vector_store_from_args(args, repo_manager)
         repo_vector_store.ensure_exists()
-        repo_vector_store.upsert(repo_embedder.download_embeddings(repo_jobs_file))
+        repo_vector_store.upsert(repo_embedder.download_embeddings(repo_jobs_file), namespace=args.index_namespace)
 
     if issues_embedder is not None:
         logging.info("Waiting for issue embeddings to be ready...")
@@ -105,7 +107,9 @@ def main():
         logging.info("Moving embeddings to the issues vector store...")
         issues_vector_store = build_vector_store_from_args(args, issues_manager)
         issues_vector_store.ensure_exists()
-        issues_vector_store.upsert(issues_embedder.download_embeddings(issues_jobs_file))
+        issues_vector_store.upsert(
+            issues_embedder.download_embeddings(issues_jobs_file), namespace=args.index_namespace
+        )
 
     logging.info("Done!")
 

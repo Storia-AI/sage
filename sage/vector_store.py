@@ -1,7 +1,7 @@
 """Vector store abstraction and implementations."""
 
-import os
 import logging
+import os
 from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Dict, Generator, List, Optional, Tuple
@@ -36,33 +36,32 @@ class VectorStore(ABC):
         """Ensures that the vector store exists. Creates it if it doesn't."""
 
     @abstractmethod
-    def upsert_batch(self, vectors: List[Vector]):
+    def upsert_batch(self, vectors: List[Vector], namespace: str):
         """Upserts a batch of vectors."""
 
-    def upsert(self, vectors: Generator[Vector, None, None]):
+    def upsert(self, vectors: Generator[Vector, None, None], namespace: str):
         """Upserts in batches of 100, since vector stores have a limit on upsert size."""
         batch = []
         for metadata, embedding in vectors:
             batch.append((metadata, embedding))
             if len(batch) == 100:
-                self.upsert_batch(batch)
+                self.upsert_batch(batch, namespace)
                 batch = []
         if batch:
-            self.upsert_batch(batch)
+            self.upsert_batch(batch, namespace)
 
     @abstractmethod
-    def as_retriever(self, top_k: int, embeddings: Embeddings):
+    def as_retriever(self, top_k: int, embeddings: Embeddings, namespace: str):
         """Converts the vector store to a LangChain retriever object."""
 
 
 class PineconeVectorStore(VectorStore):
     """Vector store implementation using Pinecone."""
 
-    def __init__(self, index_name: str, namespace: str, dimension: int, alpha: float, bm25_cache: Optional[str] = None):
+    def __init__(self, index_name: str, dimension: int, alpha: float, bm25_cache: Optional[str] = None):
         """
         Args:
             index_name: The name of the Pinecone index to use. If it doesn't exist already, we'll create it.
-            namespace: The namespace within the index to use.
             dimension: The dimension of the vectors.
             alpha: The alpha parameter for hybrid search: alpha == 1.0 means pure dense search, alpha == 0.0 means pure
                 BM25, and 0.0 < alpha < 1.0 means a hybrid of the two.
@@ -72,7 +71,6 @@ class PineconeVectorStore(VectorStore):
         self.index_name = index_name
         self.dimension = dimension
         self.client = Pinecone()
-        self.namespace = namespace
         self.alpha = alpha
 
         if alpha < 1.0:
@@ -105,7 +103,8 @@ class PineconeVectorStore(VectorStore):
         def patched_query(*args, **kwargs):
             result = original_query(*args, **kwargs)
             for res in result["matches"]:
-                res["metadata"]["context"] = res["metadata"][TEXT_FIELD]
+                if TEXT_FIELD in res["metadata"]:
+                    res["metadata"]["context"] = res["metadata"][TEXT_FIELD]
             return result
 
         index.query = patched_query
@@ -121,7 +120,7 @@ class PineconeVectorStore(VectorStore):
                 spec=ServerlessSpec(cloud="aws", region="us-east-1"),
             )
 
-    def upsert_batch(self, vectors: List[Vector]):
+    def upsert_batch(self, vectors: List[Vector], namespace: str):
         pinecone_vectors = []
         for i, (metadata, embedding) in enumerate(vectors):
             vector = {"id": metadata.get("id", str(i)), "values": embedding, "metadata": metadata}
@@ -129,21 +128,21 @@ class PineconeVectorStore(VectorStore):
                 vector["sparse_values"] = self.bm25_encoder.encode_documents(metadata[TEXT_FIELD])
             pinecone_vectors.append(vector)
 
-        self.index.upsert(vectors=pinecone_vectors, namespace=self.namespace)
+        self.index.upsert(vectors=pinecone_vectors, namespace=namespace)
 
-    def as_retriever(self, top_k: int, embeddings: Embeddings):
+    def as_retriever(self, top_k: int, embeddings: Embeddings, namespace: str):
         if self.bm25_encoder:
             return PineconeHybridSearchRetriever(
                 embeddings=embeddings,
                 sparse_encoder=self.bm25_encoder,
                 index=self.index,
-                namespace=self.namespace,
+                namespace=namespace,
                 top_k=top_k,
                 alpha=self.alpha,
             )
 
         return LangChainPinecone.from_existing_index(
-            index_name=self.index_name, embedding=embeddings, namespace=self.namespace
+            index_name=self.index_name, embedding=embeddings, namespace=namespace
         ).as_retriever(search_kwargs={"k": top_k})
 
 
@@ -157,12 +156,14 @@ class MarqoVectorStore(VectorStore):
     def ensure_exists(self):
         pass
 
-    def upsert_batch(self, vectors: List[Vector]):
+    def upsert_batch(self, vectors: List[Vector], namespace: str):
         # Since Marqo is both an embedder and a vector store, the embedder is already doing the upsert.
         pass
 
-    def as_retriever(self, top_k: int, embeddings: Embeddings = None):
+    def as_retriever(self, top_k: int, embeddings: Embeddings = None, namespace: str = None):
         del embeddings  # Unused; The Marqo vector store is also an embedder.
+        del namespace  # Unused; Unlike Pinecone, Marqo doesn't differentiate between index name and namespace.
+
         vectorstore = Marqo(client=self.client, index_name=self.index_name)
 
         # Monkey-patch the _construct_documents_from_results_without_score method to not expect a "metadata" field in
@@ -202,7 +203,6 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
 
         return PineconeVectorStore(
             index_name=args.pinecone_index_name,
-            namespace=args.index_namespace,
             dimension=args.embedding_size if "embedding_size" in args else None,
             alpha=args.retrieval_alpha,
             bm25_cache=bm25_cache,
