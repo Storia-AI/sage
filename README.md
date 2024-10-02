@@ -89,9 +89,9 @@ pip install git+https://github.com/Storia-AI/sage.git@main
     export PINECONE_INDEX_NAME=...
     ```
 
-3. For reranking, we support <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a>, <a href="https://docs.voyageai.com/docs/reranker">Voyage</a>, <a href="https://cohere.com/rerank">Cohere</a>, and <a href="https://jina.ai/reranker/">Jina</a>. According to [our experiments](benchmark/retrieval/README.md), NVIDIA performs best. Note: for NVIDIA you should use the `nvidia/nv-rerankqa-mistral-4b-v3` reranker. 
-
-Export the API key of the desired provider:
+3. For reranking, we support <a href="https://developer.nvidia.com/blog/enhancing-rag-pipelines-with-re-ranking/">NVIDIA</a>, <a href="https://docs.voyageai.com/docs/reranker">Voyage</a>, <a href="https://cohere.com/rerank">Cohere</a>, and <a href="https://jina.ai/reranker/">Jina</a>.
+   - According to [our experiments](benchmark/retrieval/README.md), NVIDIA performs best. To get an API key, follow [these instructions](https://docs.nvidia.com/nim/large-language-models/latest/getting-started.html#generate-an-api-key). Note that NVIDIA's API keys are model-specific. We recommend using `nvidia/nv-rerankqa-mistral-4b-v3`.
+   - Export the API key of the desired provider:
     ```
     export NVIDIA_API_KEY=...  # or
     export VOYAGE_API_KEY=...  # or
