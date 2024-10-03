@@ -137,7 +137,7 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
     )
     parser.add(
         "--retrieval-alpha",
-        default=0.5,
+        default=1.0,
         type=float,
         help="Takes effect for Pinecone retriever only. The weight of the dense (embeddings-based) vs sparse (BM25) "
         "encoder in the final retrieval score. A value of 0.0 means BM25 only, 1.0 means embeddings only.",
