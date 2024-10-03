@@ -1,6 +1,7 @@
 """Vector store abstraction and implementations."""
 
 import logging
+import nltk
 import os
 from abc import ABC, abstractmethod
 from functools import cached_property
