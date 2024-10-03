@@ -1,6 +1,6 @@
 # Embeddings
 embedding-provider: openai
-embedding-model: text-embedding-ada-002
+embedding-model: text-embedding-3-small
 tokens-per-chunk: 800
 chunks-per-batch: 2000
 
