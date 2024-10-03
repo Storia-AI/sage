@@ -143,11 +143,13 @@ If you are planning on indexing GitHub issues in addition to the codebase, you w
 
 <details>
 <summary><strong>:lock: Working with private repositories</strong></summary>
-To index and chat with a private repository, simply set the GITHUB_TOKEN environment variable. To obtain this token: go to github.com > click on your profile icon > Settings > Developer settings > Personal access tokens. You can either make a fine-grained token for the desired repository, or a classic token.
+
+To index and chat with a private repository, simply set the `GITHUB_TOKEN` environment variable. To obtain this token, go to github.com > click on your profile icon > Settings > Developer settings > Personal access tokens. You can either make a fine-grained token for the desired repository, or a classic token.
 
 ```
 export GITHUB_TOKEN=...
 ```
+
 </details>
 
 <details>
@@ -181,10 +183,12 @@ To specify an exclusion file (i.e. index all files, except for the ones specifie
 sage-index $GITHUB_REPO --exclude=/path/to/exclusion/file
 ```
 By default, we use the exclusion file [sample-exclude.txt](sage/sample-exclude.txt).
+
 </details>
 
 <details>
 <summary><strong>:bug: Index open GitHub issues</strong></summary>
+
 You will need a GitHub token first:
 
 ```
@@ -205,6 +209,26 @@ To index GitHub issues, but not the codebase:
 ```
 sage-index $GITHUB_REPO --index-issues --no-index-repo
 ```
+
+</details>
+
+<details>
+<summary><strong>:books: Experiment with retrieval strategies</strong></summary>
+
+Retrieving the right files from the vector database is arguably the quality bottleneck of the system. We are actively experimenting with various retrieval strategies and documenting our findings [here](benchmark/retrieval/README.md).
+
+Currently, we support the following types of retrieval:
+- **Vanilla RAG** from a vector database (nearest neighbor between dense embeddings). This is the default.
+- **Hybrid RAG** that combines dense retrieval (embeddings-based) with sparse retrieval (BM25). Use `--retrieval-alpha` to weigh the two strategies.
+
+    - A value of 1 means dense-only retrieval and 0 means BM25-only retrieval.
+    - Note this is not available when running locally, only when using Pinecone as a vector store.
+    - Contrary to [Anthropic's findings](https://www.anthropic.com/news/contextual-retrieval), we find that BM25 is actually damaging performance *on codebases*, because it gives undeserved advantage to Markdown files.
+
+- **Multi-query retrieval** performs multiple query rewrites, makes a separate retrieval call for each, and takes the union of the retrieved documents. You can activate it by passing `--multi-query-retrieval`.
+
+    - We find that [on our benchmark](benchmark/retrieval/README.md) this only marginally improves retrieval quality (from 0.44 to 0.46 R-precision) while being significantly slower and more expensive due to LLM calls. But your mileage may vary.
+
 </details>
 
 # Why chat with a codebase?
