@@ -99,9 +99,9 @@ def main():
         with open(output_file, "w") as f:
             json.dump(out_data, f, indent=4)
 
-        for key in sorted(results.keys()):
-            print(f"{key}: {results[key]}")
-        print(f"Predictions and metrics saved to {output_file}")
+    for key in sorted(results.keys()):
+        print(f"{key}: {results[key]}")
+    print(f"Predictions and metrics saved to {output_file}")
 
 
 if __name__ == "__main__":
