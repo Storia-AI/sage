@@ -1,5 +1,7 @@
 # This list tends to be overly-aggressive. We're assuming by default devs are most interested in code files, not configs.
+dir:_build
 dir:alembic
+dir:build
 dir:deprecated
 dir:docker
 dir:downgrades
@@ -39,7 +41,6 @@ ext:.gz
 ext:.icns
 ext:.ico
 ext:.inp
-ext:.ipynb
 ext:.isl
 ext:.jar
 ext:.jpeg
@@ -63,6 +64,7 @@ ext:.pt
 ext:.ptl
 ext:.s
 ext:.so
+ext:.sql
 ext:.sqlite
 ext:.stl
 ext:.sum
