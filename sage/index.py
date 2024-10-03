@@ -42,7 +42,6 @@ def main():
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
 
-    
     ######################
     # Step 1: Embeddings #
     ######################
@@ -59,7 +58,14 @@ def main():
             inclusion_file=args.include,
             exclusion_file=args.exclude,
         )
-        repo_manager.download()
+
+        success = repo_manager.download()
+        if not success:
+            raise ValueError(
+                f"Unable to clone {args.repo_id}. Please check that it exists and you have access to it. "
+                "For private repositories, please set the GITHUB_TOKEN variable in your environment."
+            )
+
         logging.info("Embedding the repo...")
         chunker = UniversalFileChunker(max_tokens=args.tokens_per_chunk)
         repo_embedder = build_batch_embedder_from_flags(repo_manager, chunker, args)
