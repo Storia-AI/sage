@@ -190,7 +190,6 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
     """
     if args.vector_store_provider == "pinecone":
         bm25_cache = os.path.join(".bm25_cache", args.index_namespace, "bm25_encoder.json")
-
         if not os.path.exists(bm25_cache) and data_manager:
             logging.info("Fitting BM25 encoder on the corpus...")
             corpus = [content for content, _ in data_manager.walk()]
