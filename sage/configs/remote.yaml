@@ -1,6 +1,6 @@
 # Embeddings
 embedding-provider: openai
-embedding-model: text-embedding-ada-002
+embedding-model: text-embedding-3-small
 tokens-per-chunk: 800
 chunks-per-batch: 2000
 
@@ -11,7 +11,7 @@ hybrid-retrieval: true
 
 # LLM
 llm-provider: openai
-llm-model: gpt-4
+llm-model: gpt-4o
 
 # Reranking
 reranker-provider: nvidia
