@@ -32,7 +32,6 @@ def build_reranker(provider: str, model: Optional[str] = None, top_k: Optional[i
         model = model or "rerank-english-v3.0"
         return CohereRerank(model=model, cohere_api_key=os.environ.get("COHERE_API_KEY"), top_n=top_k)
     if provider == RerankerProvider.NVIDIA.value:
-        print(f"NVIDIA API KEY: {os.environ.get('NVIDIA_API_KEY')}")
         if not os.environ.get("NVIDIA_API_KEY"):
             raise ValueError("Please set the NVIDIA_API_KEY environment variable")
         model = model or "nvidia/nv-rerankqa-mistral-4b-v3"
@@ -42,7 +41,6 @@ def build_reranker(provider: str, model: Optional[str] = None, top_k: Optional[i
             raise ValueError("Please set the JINA_API_KEY environment variable")
         return JinaRerank(top_n=top_k)
     if provider == RerankerProvider.VOYAGE.value:
-        print(f"VOYAGE API KEY: {os.environ.get('VOYAGE_API_KEY')}")
         if not os.environ.get("VOYAGE_API_KEY"):
             raise ValueError("Please set the VOYAGE_API_KEY environment variable")
         model = model or "rerank-1"
