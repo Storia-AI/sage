@@ -150,7 +150,7 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="When set to True, we rewrite the query 5 times, perform retrieval for each rewrite, and take the union "
-        "of retrieved documents. See https://python.langchain.com/v0.1/docs/modules/data_connection/retrievers/MultiQueryRetriever/."
+        "of retrieved documents. See https://python.langchain.com/v0.1/docs/modules/data_connection/retrievers/MultiQueryRetriever/.",
     )
     return validate_vector_store_args
 
