@@ -62,8 +62,6 @@ def main():
 
     with open(args.benchmark, "r") as f:
         benchmark = json.load(f)
-        #benchmark = csv.DictReader(f)
-        #benchmark = [row for row in benchmark]
     if args.max_instances is not None:
         benchmark = benchmark[: args.max_instances]
 

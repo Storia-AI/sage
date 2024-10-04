@@ -3,7 +3,7 @@ Pygments==2.18.0
 cohere==5.9.2
 configargparse
 fastapi==0.112.2
-google-ai-generativelanguage
+google-ai-generativelanguage==0.6.6
 gradio>=4.26.0
 langchain==0.2.16
 langchain-anthropic==0.1.23
