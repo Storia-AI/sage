@@ -33,3 +33,17 @@ jobs:
     - name: Run black
       run: |
         black --line-length=120 .
+
+    - name: Configure Git
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+
+    - name: Check if any files were modified
+      run: |
+        git diff --exit-code || git commit -am "Auto-format code with isort and black"
+
+    - name: Push changes
+      if: success()
+      run: |
+        git push origin HEAD:${{ github.head_ref }}
