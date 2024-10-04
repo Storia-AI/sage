@@ -10,6 +10,7 @@ import time
 from pprint import pprint
 
 import configargparse
+from dotenv import load_dotenv
 from ir_measures import MAP, MRR, P, Qrel, R, Rprec, ScoredDoc, calc_aggregate, nDCG
 
 import sage.config
@@ -20,6 +21,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+load_dotenv()
 
 def main():
     parser = configargparse.ArgParser(
@@ -39,7 +41,6 @@ def main():
     )
 
     parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
-    pprint(os.environ)
     sage.config.add_config_args(parser)
     sage.config.add_embedding_args(parser)
     sage.config.add_vector_store_args(parser)

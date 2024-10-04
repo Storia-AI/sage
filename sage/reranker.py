@@ -27,8 +27,6 @@ def build_reranker(provider: str, model: Optional[str] = None, top_k: Optional[i
         encoder_model = HuggingFaceCrossEncoder(model_name=model)
         return CrossEncoderReranker(model=encoder_model, top_n=top_k)
     if provider == RerankerProvider.COHERE.value:
-        print(f"COHERE API KEY: {os.environ.get('COHERE_API_KEY')}")
-        #os.environ["COHERE_API_KEY"] = "4RohcGp0y0km91oVfVnfG4VMLq3LHUMlrlm71t7g"
         if not os.environ.get("COHERE_API_KEY"):
             raise ValueError("Please set the COHERE_API_KEY environment variable")
         model = model or "rerank-english-v3.0"

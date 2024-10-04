@@ -1,6 +1,7 @@
 from typing import Optional
 
 from langchain.retrievers import ContextualCompressionRetriever
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_voyageai import VoyageAIEmbeddings
 
@@ -16,6 +17,8 @@ def build_retriever_from_args(args, data_manager: Optional[DataManager] = None):
         embeddings = OpenAIEmbeddings(model=args.embedding_model)
     elif args.embedding_provider == "voyage":
         embeddings = VoyageAIEmbeddings(model=args.embedding_model)
+    elif args.embedding_provider == "gemini":
+        embeddings = GoogleGenerativeAIEmbeddings(model=args.embedding_model)
     else:
         embeddings = None
 
