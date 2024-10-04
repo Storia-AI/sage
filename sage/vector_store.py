@@ -1,13 +1,13 @@
 """Vector store abstraction and implementations."""
 
 import logging
-import nltk
 import os
 from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Dict, Generator, List, Optional, Tuple
 
 import marqo
+import nltk
 from langchain_community.retrievers import PineconeHybridSearchRetriever
 from langchain_community.vectorstores import Marqo
 from langchain_community.vectorstores import Pinecone as LangChainPinecone
@@ -22,12 +22,14 @@ from sage.data_manager import DataManager
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
+
 def is_punkt_downloaded():
     try:
-        find('tokenizers/punkt_tab')
+        find("tokenizers/punkt_tab")
         return True
     except LookupError:
         return False
+
 
 class VectorStore(ABC):
     """Abstract class for a vector store."""
@@ -83,7 +85,7 @@ class PineconeVectorStore(VectorStore):
                 else:
                     print("punkt is not downloaded")
                     # Optionally download it
-                    nltk.download('punkt_tab')
+                    nltk.download("punkt_tab")
                 self.bm25_encoder = BM25Encoder()
                 self.bm25_encoder.load(path=bm25_cache)
             else:

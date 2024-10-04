@@ -40,7 +40,9 @@ def main():
 
         retrieved = retriever.invoke(item["question"])
         # Sort by score in descending order.
-        retrieved = sorted(retrieved, key=lambda doc: doc.metadata.get("score", doc.metadata.get("relevance_score")), reverse=True)
+        retrieved = sorted(
+            retrieved, key=lambda doc: doc.metadata.get("score", doc.metadata.get("relevance_score")), reverse=True
+        )
         # Keep top 3, since the Kaggle competition only evaluates the top 3.
         retrieved = retrieved[:3]
         retrieved_filenames = [doc.metadata["file_path"] for doc in retrieved]

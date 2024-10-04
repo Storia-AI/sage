@@ -33,7 +33,7 @@ def main():
     parser.add(
         "--logs-dir",
         default=None,
-        help="Path where to output predictions and metrics. Optional, since metrics are also printed to console."
+        help="Path where to output predictions and metrics. Optional, since metrics are also printed to console.",
     )
     parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
 
@@ -72,9 +72,7 @@ def main():
             # the retrived documents. The key of the score varies depending on the underlying retriever. If there's no
             # score, we use 1/(doc_idx+1) since it preserves the order of the documents.
             score = doc.metadata.get("score", doc.metadata.get("relevance_score", 1 / (doc_idx + 1)))
-            retrieved_docs.append(
-                ScoredDoc(query_id=query_id, doc_id=doc.metadata["file_path"], score=score)
-            )
+            retrieved_docs.append(ScoredDoc(query_id=query_id, doc_id=doc.metadata["file_path"], score=score))
             # Update the output dictionary with the retrieved documents.
             item["retrieved"].append({"file_path": doc.metadata["file_path"], "score": score})
 
