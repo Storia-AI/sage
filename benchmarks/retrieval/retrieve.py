@@ -38,6 +38,7 @@ def main():
     parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
 
     sage.config.add_config_args(parser)
+    sage.config.add_llm_args(parser)  # Needed for --multi-query-retriever, which rewrites the query with an LLM.
     sage.config.add_embedding_args(parser)
     sage.config.add_vector_store_args(parser)
     sage.config.add_reranking_args(parser)
@@ -97,9 +98,9 @@ def main():
         with open(output_file, "w") as f:
             json.dump(out_data, f, indent=4)
 
-        for key in sorted(results.keys()):
-            print(f"{key}: {results[key]}")
-        print(f"Predictions and metrics saved to {output_file}")
+    for key in sorted(results.keys()):
+        print(f"{key}: {results[key]}")
+    print(f"Predictions and metrics saved to {output_file}")
 
 
 if __name__ == "__main__":

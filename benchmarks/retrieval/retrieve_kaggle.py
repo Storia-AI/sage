@@ -22,6 +22,7 @@ def main():
     parser.add("--output-file", required=True, help="Path to the output file with predictions.")
 
     sage.config.add_config_args(parser)
+    sage.config.add_llm_args(parser)  # Necessary for --multi-query-retriever, which calls an LLM.
     sage.config.add_embedding_args(parser)
     sage.config.add_vector_store_args(parser)
     sage.config.add_reranking_args(parser)

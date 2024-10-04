@@ -145,6 +145,13 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
     parser.add(
         "--retriever-top-k", default=25, type=int, help="The number of top documents to retrieve from the vector store."
     )
+    parser.add(
+        "--multi-query-retriever",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="When set to True, we rewrite the query 5 times, perform retrieval for each rewrite, and take the union "
+        "of retrieved documents. See https://python.langchain.com/v0.1/docs/modules/data_connection/retrievers/MultiQueryRetriever/."
+    )
     return validate_vector_store_args
 
 
