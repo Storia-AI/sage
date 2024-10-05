@@ -190,8 +190,6 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
     of documents.
     """
     if args.vector_store_provider == "pinecone":
-        # TODO (mihail): Don't immediately create a bm25 encoder if using pinecone - this should be triggered by a flag
-        # Otherwise this will break on a missing nltk download
         bm25_cache = os.path.join(".bm25_cache", args.index_namespace, "bm25_encoder.json")
         if args.retrieval_alpha < 1.0 and not os.path.exists(bm25_cache) and data_manager:
             logging.info("Fitting BM25 encoder on the corpus...")
