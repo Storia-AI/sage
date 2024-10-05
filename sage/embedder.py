@@ -4,16 +4,25 @@ import json
 import logging
 import os
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from collections import Counter
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict
+from typing import Generator
+from typing import List
+from typing import Optional
+from typing import Tuple
 
+import google.generativeai as genai
 import marqo
 import requests
 from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tenacity import retry
+from tenacity import stop_after_attempt
+from tenacity import wait_random_exponential
 
-from sage.chunker import Chunk, Chunker
+from sage.chunker import Chunk
+from sage.chunker import Chunker
 from sage.constants import TEXT_FIELD
 from sage.data_manager import DataManager
 
@@ -63,7 +72,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    sub_batch = batch[i : i + chunks_per_batch]
+                    sub_batch = batch[i: i + chunks_per_batch]
                     openai_batch_id = self._issue_job_for_chunks(sub_batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
                     batch_ids[openai_batch_id] = [chunk.metadata for chunk in sub_batch]
                     if max_embedding_jobs and len(batch_ids) >= max_embedding_jobs:
@@ -233,7 +242,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    sub_batch = batch[i : i + chunks_per_batch]
+                    sub_batch = batch[i: i + chunks_per_batch]
                     logging.info("Embedding %d chunks...", len(sub_batch))
                     result = self._make_batch_request(sub_batch)
                     for chunk, datum in zip(sub_batch, result["data"]):
@@ -305,7 +314,7 @@ class MarqoEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    sub_batch = batch[i : i + chunks_per_batch]
+                    sub_batch = batch[i: i + chunks_per_batch]
                     logging.info("Indexing %d chunks...", len(sub_batch))
                     self.index.add_documents(
                         documents=[chunk.metadata for chunk in sub_batch],
@@ -335,6 +344,79 @@ class MarqoEmbedder(BatchEmbedder):
         return []
 
 
+class GeminiBatchEmbedder(BatchEmbedder):
+    """Batch embedder that calls Gemini."""
+
+    def __init__(self, data_manager: DataManager, chunker: Chunker, embedding_model: str):
+        self.data_manager = data_manager
+        self.chunker = chunker
+        self.embedding_data = []
+        self.embedding_model = embedding_model
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
+    def _make_batch_request(self, chunks: List[Chunk]) -> Dict:
+        return genai.embed_content(
+            model=self.embedding_model,
+            content=[chunk.content for chunk in chunks],
+            task_type="retrieval_document")
+
+    def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
+        """Issues batch embedding jobs for the entire dataset."""
+        batch = []
+        chunk_count = 0
+
+        request_count = 0
+        last_request_time = time.time()
+
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
+            chunk_count += len(chunks)
+            batch.extend(chunks)
+
+            if len(batch) > chunks_per_batch:
+                for i in range(0, len(batch), chunks_per_batch):
+                    sub_batch = batch[i: i + chunks_per_batch]
+                    logging.info("Embedding %d chunks...", len(sub_batch))
+                    result = self._make_batch_request(sub_batch)
+                    for chunk, embedding in zip(sub_batch, result["embedding"]):
+                        self.embedding_data.append((chunk.metadata, embedding))
+                    request_count += 1
+
+                    # Check if we've made more than 1500 requests in the last minute
+                    # Rate limits here: https://ai.google.dev/gemini-api/docs/models/gemini
+                    current_time = time.time()
+                    elapsed_time = current_time - last_request_time
+                    if elapsed_time < 60 and request_count >= 1400:
+                        logging.info("Reached rate limit, pausing for 60 seconds...")
+                        time.sleep(60)
+                        last_request_time = current_time
+                        request_count = 0
+                    # Reset the last request time and request count if more than 60 sec have passed
+                    elif elapsed_time > 60:
+                        last_request_time = current_time
+                        request_count = 0
+
+                batch = []
+
+        # Finally, commit the last batch.
+        if batch:
+            logging.info("Embedding %d chunks...", len(batch))
+            result = self._make_batch_request(batch)
+            for chunk, embedding in zip(batch, result["embedding"]):
+                self.embedding_data.append((chunk.metadata, embedding))
+
+        logging.info(f"Successfully embedded {chunk_count} chunks.")
+
+    def embeddings_are_ready(self, *args, **kwargs) -> bool:
+        """Checks whether the batch embedding jobs are done."""
+        return True
+
+    def download_embeddings(self, *args, **kwargs) -> Generator[Vector, None, None]:
+        """Yields (chunk_metadata, embedding) pairs for each chunk in the dataset."""
+        for chunk_metadata, embedding in self.embedding_data:
+            yield chunk_metadata, embedding
+
+
 def build_batch_embedder_from_flags(data_manager: DataManager, chunker: Chunker, args) -> BatchEmbedder:
     if args.embedding_provider == "openai":
         return OpenAIBatchEmbedder(data_manager, chunker, args.local_dir, args.embedding_model, args.embedding_size)
@@ -344,5 +426,7 @@ def build_batch_embedder_from_flags(data_manager: DataManager, chunker: Chunker,
         return MarqoEmbedder(
             data_manager, chunker, index_name=args.index_namespace, url=args.marqo_url, model=args.embedding_model
         )
+    elif args.embedding_provider == "gemini":
+        return GeminiBatchEmbedder(data_manager, chunker, embedding_model=args.embedding_model)
     else:
         raise ValueError(f"Unrecognized embedder type {args.embedding_provider}")

@@ -11,6 +11,11 @@ from configargparse import ArgumentParser
 
 from sage.reranker import RerankerProvider
 
+# Limits defined here: https://ai.google.dev/gemini-api/docs/models/gemini
+# NOTE: MAX_CHUNKS_PER_BATCH isn't documented anywhere but we pick a reasonable value
+GEMINI_MAX_CHUNKS_PER_BATCH = 64
+GEMINI_MAX_TOKENS_PER_CHUNK = 2048
+
 MARQO_MAX_CHUNKS_PER_BATCH = 64
 # The ADA embedder from OpenAI has a maximum of 8192 tokens.
 OPENAI_MAX_TOKENS_PER_CHUNK = 8192
@@ -82,7 +87,7 @@ def add_repo_args(parser: ArgumentParser) -> Callable:
 
 def add_embedding_args(parser: ArgumentParser) -> Callable:
     """Adds embedding-related arguments to the parser and returns a validator."""
-    parser.add("--embedding-provider", default="marqo", choices=["openai", "voyage", "marqo"])
+    parser.add("--embedding-provider", default="marqo", choices=["openai", "voyage", "marqo", "gemini"])
     parser.add(
         "--embedding-model",
         type=str,
@@ -304,6 +309,26 @@ def _validate_marqo_embedding_args(args):
         )
 
 
+def _validate_gemini_embedding_args(args):
+    """Validates the configuration of the Gemini batch embedder and sets defaults."""
+    if not args.embedding_model:
+        args.embedding_model = "models/text-embedding-004"
+    assert os.environ["GOOGLE_API_KEY"], "Please set the GOOGLE_API_KEY environment variable if using `gemini` embeddings."
+    if not args.chunks_per_batch:
+        args.chunks_per_batch = GEMINI_MAX_CHUNKS_PER_BATCH
+    elif args.chunks_per_batch > GEMINI_MAX_CHUNKS_PER_BATCH:
+        args.chunks_per_batch = GEMINI_MAX_CHUNKS_PER_BATCH
+        logging.warning(
+            f"Gemini enforces a limit of {GEMINI_MAX_CHUNKS_PER_BATCH} chunks per batch. "
+            "Overwriting embeddings.chunks_per_batch."
+        )
+
+    if not args.tokens_per_chunk:
+        args.tokens_per_chunk = GEMINI_MAX_TOKENS_PER_CHUNK
+    if not args.embedding_size:
+        args.embedding_size = 768
+
+
 def validate_embedding_args(args):
     """Validates the configuration of the batch embedder and sets defaults."""
     if args.embedding_provider == "openai":
@@ -312,6 +337,8 @@ def validate_embedding_args(args):
         _validate_voyage_embedding_args(args)
     elif args.embedding_provider == "marqo":
         _validate_marqo_embedding_args(args)
+    elif args.embedding_provider == "gemini":
+        _validate_gemini_embedding_args(args)
     else:
         raise ValueError(f"Unrecognized --embedding-provider={args.embedding_provider}")
 

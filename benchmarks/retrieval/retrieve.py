@@ -2,22 +2,24 @@
 
 Make sure to `pip install ir_measures` before running this script.
 """
-
 import json
 import logging
 import os
 import time
 
 import configargparse
+from dotenv import load_dotenv
 from ir_measures import MAP, MRR, P, Qrel, R, Rprec, ScoredDoc, calc_aggregate, nDCG
 
 import sage.config
+from sage.data_manager import GitHubRepoManager
 from sage.retriever import build_retriever_from_args
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+load_dotenv()
 
 def main():
     parser = configargparse.ArgParser(
@@ -35,17 +37,27 @@ def main():
         default=None,
         help="Path where to output predictions and metrics. Optional, since metrics are also printed to console.",
     )
-    parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
 
+    parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
     sage.config.add_config_args(parser)
     sage.config.add_llm_args(parser)  # Needed for --multi-query-retriever, which rewrites the query with an LLM.
     sage.config.add_embedding_args(parser)
     sage.config.add_vector_store_args(parser)
     sage.config.add_reranking_args(parser)
+    sage.config.add_repo_args(parser)
+    sage.config.add_indexing_args(parser)
     args = parser.parse_args()
     sage.config.validate_vector_store_args(args)
-
-    retriever = build_retriever_from_args(args)
+    repo_manager = GitHubRepoManager(
+            args.repo_id,
+            commit_hash=args.commit_hash,
+            access_token=os.getenv("GITHUB_TOKEN"),
+            local_dir=args.local_dir,
+            inclusion_file=args.include,
+            exclusion_file=args.exclude,
+    )
+    repo_manager.download()
+    retriever = build_retriever_from_args(args, repo_manager)
 
     with open(args.benchmark, "r") as f:
         benchmark = json.load(f)
@@ -70,7 +82,7 @@ def main():
         item["retrieved"] = []
         for doc_idx, doc in enumerate(retrieved):
             # The absolute value of the scores below does not affect the metrics; it merely determines the ranking of
-            # the retrived documents. The key of the score varies depending on the underlying retriever. If there's no
+            # the retrieved documents. The key of the score varies depending on the underlying retriever. If there's no
             # score, we use 1/(doc_idx+1) since it preserves the order of the documents.
             score = doc.metadata.get("score", doc.metadata.get("relevance_score", 1 / (doc_idx + 1)))
             retrieved_docs.append(ScoredDoc(query_id=query_id, doc_id=doc.metadata["file_path"], score=score))
@@ -83,7 +95,6 @@ def main():
     print("Calculating metrics...")
     results = calc_aggregate([Rprec, P @ 1, R @ 3, nDCG @ 3, MAP, MRR], golden_docs, retrieved_docs)
     results = {str(key): value for key, value in results.items()}
-
     if args.logs_dir:
         if not os.path.exists(args.logs_dir):
             os.makedirs(args.logs_dir)

@@ -75,7 +75,6 @@ class PineconeVectorStore(VectorStore):
         self.dimension = dimension
         self.client = Pinecone()
         self.alpha = alpha
-
         if alpha < 1.0:
             if bm25_cache and os.path.exists(bm25_cache):
                 logging.info("Loading BM25 encoder from cache.")
@@ -192,9 +191,14 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
     """
     if args.vector_store_provider == "pinecone":
         bm25_cache = os.path.join(".bm25_cache", args.index_namespace, "bm25_encoder.json")
-
-        if not os.path.exists(bm25_cache) and data_manager:
+        if args.retrieval_alpha < 1.0 and not os.path.exists(bm25_cache) and data_manager:
             logging.info("Fitting BM25 encoder on the corpus...")
+            if is_punkt_downloaded():
+                print("punkt is already downloaded")
+            else:
+                print("punkt is not downloaded")
+                # Optionally download it
+                nltk.download('punkt_tab')
             corpus = [content for content, _ in data_manager.walk()]
             bm25_encoder = BM25Encoder()
             bm25_encoder.fit(corpus)
