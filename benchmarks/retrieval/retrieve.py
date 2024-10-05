@@ -2,6 +2,7 @@
 
 Make sure to `pip install ir_measures` before running this script.
 """
+
 import json
 import logging
 import os
@@ -20,6 +21,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 load_dotenv()
+
 
 def main():
     parser = configargparse.ArgParser(
@@ -49,12 +51,12 @@ def main():
     args = parser.parse_args()
     sage.config.validate_vector_store_args(args)
     repo_manager = GitHubRepoManager(
-            args.repo_id,
-            commit_hash=args.commit_hash,
-            access_token=os.getenv("GITHUB_TOKEN"),
-            local_dir=args.local_dir,
-            inclusion_file=args.include,
-            exclusion_file=args.exclude,
+        args.repo_id,
+        commit_hash=args.commit_hash,
+        access_token=os.getenv("GITHUB_TOKEN"),
+        local_dir=args.local_dir,
+        inclusion_file=args.include,
+        exclusion_file=args.exclude,
     )
     repo_manager.download()
     retriever = build_retriever_from_args(args, repo_manager)

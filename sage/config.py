@@ -313,7 +313,9 @@ def _validate_gemini_embedding_args(args):
     """Validates the configuration of the Gemini batch embedder and sets defaults."""
     if not args.embedding_model:
         args.embedding_model = "models/text-embedding-004"
-    assert os.environ["GOOGLE_API_KEY"], "Please set the GOOGLE_API_KEY environment variable if using `gemini` embeddings."
+    assert os.environ[
+        "GOOGLE_API_KEY"
+    ], "Please set the GOOGLE_API_KEY environment variable if using `gemini` embeddings."
     if not args.chunks_per_batch:
         args.chunks_per_batch = GEMINI_MAX_CHUNKS_PER_BATCH
     elif args.chunks_per_batch > GEMINI_MAX_CHUNKS_PER_BATCH:
