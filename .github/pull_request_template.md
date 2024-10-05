@@ -25,5 +25,5 @@ Fixes # (issue)
 
 ## Who can review?
 
-Anyone in the community is free to review the PR once the tests have passed. Feel free to tag
-members/contributors who may be interested in your PR.
+Anyone in the community is free to review the PR once the tests have passed. Feel free to tag  members/contributors who
+may be interested in your PR.
