@@ -11,6 +11,8 @@ from configargparse import ArgumentParser
 
 from sage.reranker import RerankerProvider
 
+# Limits defined here: https://ai.google.dev/gemini-api/docs/models/gemini
+# NOTE: MAX_CHUNKS_PER_BATCH isn't documented anywhere but we pick a reasonable value
 GEMINI_MAX_CHUNKS_PER_BATCH = 64
 GEMINI_MAX_TOKENS_PER_CHUNK = 2048
 
@@ -140,13 +142,20 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
     )
     parser.add(
         "--retrieval-alpha",
-        default=0.5,
+        default=1.0,
         type=float,
         help="Takes effect for Pinecone retriever only. The weight of the dense (embeddings-based) vs sparse (BM25) "
         "encoder in the final retrieval score. A value of 0.0 means BM25 only, 1.0 means embeddings only.",
     )
     parser.add(
         "--retriever-top-k", default=25, type=int, help="The number of top documents to retrieve from the vector store."
+    )
+    parser.add(
+        "--multi-query-retriever",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="When set to True, we rewrite the query 5 times, perform retrieval for each rewrite, and take the union "
+        "of retrieved documents. See https://python.langchain.com/v0.1/docs/modules/data_connection/retrievers/MultiQueryRetriever/.",
     )
     return validate_vector_store_args
 
@@ -301,7 +310,7 @@ def _validate_marqo_embedding_args(args):
 
 
 def _validate_gemini_embedding_args(args):
-    """Validates the configuration of the Marqo batch embedder and sets defaults."""
+    """Validates the configuration of the Gemini batch embedder and sets defaults."""
     if not args.embedding_model:
         args.embedding_model = "models/text-embedding-004"
     assert os.environ["GOOGLE_API_KEY"], "Please set the GOOGLE_API_KEY environment variable if using `gemini` embeddings."
@@ -310,7 +319,7 @@ def _validate_gemini_embedding_args(args):
     elif args.chunks_per_batch > GEMINI_MAX_CHUNKS_PER_BATCH:
         args.chunks_per_batch = GEMINI_MAX_CHUNKS_PER_BATCH
         logging.warning(
-            f"Marqo enforces a limit of {GEMINI_MAX_CHUNKS_PER_BATCH} chunks per batch. "
+            f"Gemini enforces a limit of {GEMINI_MAX_CHUNKS_PER_BATCH} chunks per batch. "
             "Overwriting embeddings.chunks_per_batch."
         )
 

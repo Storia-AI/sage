@@ -2,12 +2,10 @@
 
 Make sure to `pip install ir_measures` before running this script.
 """
-import csv
 import json
 import logging
 import os
 import time
-from pprint import pprint
 
 import configargparse
 from dotenv import load_dotenv
@@ -37,11 +35,12 @@ def main():
     parser.add(
         "--logs-dir",
         default=None,
-        help="Path where to output predictions and metrics. Optional, since metrics are also printed to console."
+        help="Path where to output predictions and metrics. Optional, since metrics are also printed to console.",
     )
 
     parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
     sage.config.add_config_args(parser)
+    sage.config.add_llm_args(parser)  # Needed for --multi-query-retriever, which rewrites the query with an LLM.
     sage.config.add_embedding_args(parser)
     sage.config.add_vector_store_args(parser)
     sage.config.add_reranking_args(parser)
@@ -86,9 +85,7 @@ def main():
             # the retrieved documents. The key of the score varies depending on the underlying retriever. If there's no
             # score, we use 1/(doc_idx+1) since it preserves the order of the documents.
             score = doc.metadata.get("score", doc.metadata.get("relevance_score", 1 / (doc_idx + 1)))
-            retrieved_docs.append(
-                ScoredDoc(query_id=query_id, doc_id=doc.metadata["file_path"], score=score)
-            )
+            retrieved_docs.append(ScoredDoc(query_id=query_id, doc_id=doc.metadata["file_path"], score=score))
             # Update the output dictionary with the retrieved documents.
             item["retrieved"].append({"file_path": doc.metadata["file_path"], "score": score})
 
@@ -98,7 +95,6 @@ def main():
     print("Calculating metrics...")
     results = calc_aggregate([Rprec, P @ 1, R @ 3, nDCG @ 3, MAP, MRR], golden_docs, retrieved_docs)
     results = {str(key): value for key, value in results.items()}
-    print(results)
     if args.logs_dir:
         if not os.path.exists(args.logs_dir):
             os.makedirs(args.logs_dir)
@@ -113,9 +109,9 @@ def main():
         with open(output_file, "w") as f:
             json.dump(out_data, f, indent=4)
 
-        for key in sorted(results.keys()):
-            print(f"{key}: {results[key]}")
-        print(f"Predictions and metrics saved to {output_file}")
+    for key in sorted(results.keys()):
+        print(f"{key}: {results[key]}")
+    print(f"Predictions and metrics saved to {output_file}")
 
 
 if __name__ == "__main__":

@@ -291,7 +291,7 @@ class IpynbFileChunker(Chunker):
 
         for chunk in chunks:
             # Update filenames back to .ipynb
-            chunk.metadata = metadata
+            chunk.metadata["file_path"] = filename
         return chunks
 
 

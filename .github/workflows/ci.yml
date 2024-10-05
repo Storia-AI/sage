@@ -1,0 +1,52 @@
+name: Code Formatting Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  format-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort
+
+    - name: Run isort
+      run: |
+        isort .
+
+    - name: Run black
+      run: |
+        black --line-length=120 .
+
+    - name: Configure Git
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+
+    - name: Check if any files were modified
+      run: |
+        git diff --exit-code || git commit -am "Auto-format code with isort and black"
+
+    - name: Push changes
+      if: success()
+      run: |
+        git push origin HEAD:${{ github.ref }}

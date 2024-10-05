@@ -365,15 +365,13 @@ class GeminiBatchEmbedder(BatchEmbedder):
         batch = []
         chunk_count = 0
 
+        request_count = 0
+        last_request_time = time.time()
+
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
-
-            token_count = chunk_count * self.chunker.max_tokens
-            if token_count % 900_000 == 0:
-                logging.info("Pausing for 60 seconds to avoid rate limiting...")
-                time.sleep(60)
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
@@ -382,6 +380,22 @@ class GeminiBatchEmbedder(BatchEmbedder):
                     result = self._make_batch_request(sub_batch)
                     for chunk, embedding in zip(sub_batch, result["embedding"]):
                         self.embedding_data.append((chunk.metadata, embedding))
+                    request_count += 1
+
+                    # Check if we've made more than 1500 requests in the last minute
+                    # Rate limits here: https://ai.google.dev/gemini-api/docs/models/gemini
+                    current_time = time.time()
+                    elapsed_time = current_time - last_request_time
+                    if elapsed_time < 60 and request_count >= 1400:
+                        logging.info("Reached rate limit, pausing for 60 seconds...")
+                        time.sleep(60)
+                        last_request_time = current_time
+                        request_count = 0
+                    # Reset the last request time and request count if more than 60 sec have passed
+                    elif elapsed_time > 60:
+                        last_request_time = current_time
+                        request_count = 0
+
                 batch = []
 
         # Finally, commit the last batch.
@@ -395,12 +409,10 @@ class GeminiBatchEmbedder(BatchEmbedder):
 
     def embeddings_are_ready(self, *args, **kwargs) -> bool:
         """Checks whether the batch embedding jobs are done."""
-        # Implement the logic to check if the embedding jobs are complete
         return True
 
     def download_embeddings(self, *args, **kwargs) -> Generator[Vector, None, None]:
         """Yields (chunk_metadata, embedding) pairs for each chunk in the dataset."""
-        # Implement the logic to download the embeddings from Gemini
         for chunk_metadata, embedding in self.embedding_data:
             yield chunk_metadata, embedding
 
