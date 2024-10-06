@@ -49,4 +49,4 @@ jobs:
     - name: Push changes
       if: success()
       run: |
-        git push origin HEAD:${{ github.ref }}
+        git push origin HEAD:${{ github.event.pull_request.head.ref }}
