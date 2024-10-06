@@ -4,3 +4,70 @@ build-backend = "setuptools.build_meta"
 
 [tool.black]
 line-length = 120
+
+[project]
+name = "sage"
+version = "0.1.2"
+description = "A library to index a code repository and chat with it via LLMs."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Julia Turc", email = "founders@storia.ai" },
+    { name = "Mihail Eric", email = "founders@storia.ai" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "GitPython==3.1.43",
+    "Pygments==2.18.0",
+    "cohere==5.9.2",
+    "configargparse",
+    "fastapi==0.112.2",
+    "google-ai-generativelanguage==0.6.6",
+    "gradio>=4.26.0",
+    "langchain==0.2.16",
+    "langchain-anthropic==0.1.23",
+    "langchain-cohere==0.2.4",
+    "langchain-community==0.2.17",
+    "langchain-core==0.2.41",
+    "langchain-experimental==0.0.65",
+    "langchain-google-genai",
+    "langchain-nvidia-ai-endpoints==0.2.2",
+    "langchain-ollama==0.1.3",
+    "langchain-openai==0.1.25",
+    "langchain-text-splitters==0.2.4",
+    "langchain-voyageai==0.1.1",
+    "marqo==3.7.0",
+    "nbformat==5.10.4",
+    "openai==1.42.0",
+    "pinecone==5.0.1",
+    "pinecone-text==0.9.0",
+    "python-dotenv==1.0.1",
+    "requests==2.32.3",
+    "semchunk==2.2.0",
+    "sentence-transformers==3.1.0",
+    "tenacity==8.5.0",
+    "tiktoken==0.7.0",
+    "tokenizers==0.19.1",
+    "transformers==4.44.2",
+    "tree-sitter==0.22.3",
+    "tree-sitter-language-pack==0.2.0",
+    "voyageai==0.2.3",
+    "setuptools"  # Added from the setup.py install_requires
+]
+
+[project.optional-dependencies]
+dev = ["black"]
+
+[project.scripts]
+sage-index = "sage.index:main"
+sage-chat = "sage.chat:main"
+
+[tool.setuptools.package-data]
+"sample-exclude.txt" = ["sage"]
+
+[tool.setuptools.packages]
+find = {}
