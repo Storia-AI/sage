@@ -1,5 +1,5 @@
 # Contributing to Sage
-Thank you for considering contributing to Sage! We welcome all kinds of contributions. You don't need to be an AI expert to have meaningful impact. If you have any questions, reach out to us via [Discord](https://discord.gg/zbtZe7GcVU) or [email](mailto:founders@storia.ai).
+Thank you for considering contributing to Sage! We welcome all kinds of contributions. You don't need to be an AI expert to have meaningful impact. If you have any questions, reach out to us via [Discord](https://discord.gg/zbtZe7GcVU).
 
 If you are looking for an internship or full-time job, becoming a contributor is the best way to surface to the top of our resume stack!
 
@@ -24,7 +24,7 @@ For code contributions in particular, we suggest the following workflow:
 - If you are addressing an existing issue or feature request, make sure to reference it under the "Development" section of the pull request.
 
 ### Non-code contributions
-- If you simply have suggestions for improvement or marketing materials, let us know via [Discord](https://discord.gg/zbtZe7GcVU) or [email](mailto:founders@storia.ai).
+- If you simply have suggestions for improvement or marketing materials, let us know via [Discord](https://discord.gg/zbtZe7GcVU).
 
 ## Hacktoberfest 2024
 We welcome Hacktoberfest contributions for all the items above. Issues that we consider particularly beginner-friendly are marked with the "hacktoberfest" label.
