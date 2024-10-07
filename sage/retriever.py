@@ -12,6 +12,30 @@ from sage.reranker import build_reranker
 from sage.vector_store import build_vector_store_from_args
 
 
+from langchain.schema import BaseRetriever, Document
+from langchain.callbacks.manager import CallbackManagerForRetrieverRun
+from typing import List
+
+
+class LLMRetriever(BaseRetriever):
+    """Custom Langchain retriever that feeds the file hierarchy to an LLM and asks which files are relevant for the user
+    query. 
+    """
+
+    def __init__(self, data_manager: DataManager):
+        self.data_manager = data_manager
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+    ) -> List[Document]:
+        """Retrieve relevant documents for a given query."""
+        docs = self.vector_store.similarity_search(query, **self.search_kwargs)
+        return docs
+
+
 def build_retriever_from_args(args, data_manager: Optional[DataManager] = None):
     """Builds a retriever (with optional reranking) from command-line arguments."""
 
