@@ -67,7 +67,7 @@ sage-index = "sage.index:main"
 sage-chat = "sage.chat:main"
 
 [tool.setuptools.package-data]
-"sample-exclude.txt" = ["sage"]
+"sage" = ["sample-exclude.txt"]
 
 [tool.setuptools.packages]
 find = {}
