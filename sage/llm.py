@@ -3,6 +3,7 @@ import os
 from langchain_anthropic import ChatAnthropic
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from tqdm import tqdm, trange
 
 
 def build_llm_via_langchain(provider: str, model: str):

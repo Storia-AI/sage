@@ -13,6 +13,7 @@ import tiktoken
 from semchunk import chunk as chunk_via_semchunk
 from tree_sitter import Node
 from tree_sitter_language_pack import get_parser
+from tqdm import tqdm, trange
 
 from sage.constants import TEXT_FIELD
 
@@ -130,17 +131,17 @@ class CodeFileChunker(Chunker):
             return self.text_chunker.chunk(file_content[node.start_byte : node.end_byte], file_metadata)
 
         chunks = []
-        for child in node.children:
+        for child in tqdm(node.children):
             chunks.extend(self._chunk_node(child, file_content, file_metadata))
 
-        for chunk in chunks:
+        for chunk in tqdm(chunks):
             # This should always be true. Otherwise there must be a bug in the code.
             assert chunk.num_tokens <= self.max_tokens
 
         # Merge neighboring chunks if their combined size doesn't exceed max_tokens. The goal is to avoid pathologically
         # small chunks that end up being undeservedly preferred by the retriever.
         merged_chunks = []
-        for chunk in chunks:
+        for chunk in tqdm(chunks):
             if not merged_chunks:
                 merged_chunks.append(chunk)
             elif merged_chunks[-1].num_tokens + chunk.num_tokens < self.max_tokens - 50:
@@ -160,7 +161,7 @@ class CodeFileChunker(Chunker):
                 merged_chunks.append(chunk)
         chunks = merged_chunks
 
-        for chunk in merged_chunks:
+        for chunk in tqdm(merged_chunks):
             # This should always be true. Otherwise there's a bug worth investigating.
             assert chunk.num_tokens <= self.max_tokens
 
@@ -221,7 +222,7 @@ class CodeFileChunker(Chunker):
             return []
 
         file_chunks = self._chunk_node(tree.root_node, file_content, file_metadata)
-        for chunk in file_chunks:
+        for chunk in tqdm(file_chunks):
             # Make sure that the chunk has content and doesn't exceed the max_tokens limit. Otherwise there must be
             # a bug in the code.
             assert (
@@ -250,7 +251,7 @@ class TextFileChunker(Chunker):
 
         file_chunks = []
         start = 0
-        for text_chunk in text_chunks:
+        for text_chunk in tqdm(text_chunks):
             # This assertion should always be true. Otherwise there's a bug worth finding.
             assert self.count_tokens(text_chunk) <= self.max_tokens - extra_tokens
 
@@ -289,7 +290,7 @@ class IpynbFileChunker(Chunker):
         tmp_metadata = {"file_path": filename.replace(".ipynb", ".py")}
         chunks = self.code_chunker.chunk(python_code, tmp_metadata)
 
-        for chunk in chunks:
+        for chunk in tqdm(chunks):
             # Update filenames back to .ipynb
             chunk.metadata["file_path"] = filename
         return chunks

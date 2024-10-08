@@ -10,6 +10,7 @@ import pkg_resources
 from configargparse import ArgumentParser
 
 from sage.reranker import RerankerProvider
+from tqdm import tqdm, trange
 
 # Limits defined here: https://ai.google.dev/gemini-api/docs/models/gemini
 # NOTE: MAX_CHUNKS_PER_BATCH isn't documented anywhere but we pick a reasonable value

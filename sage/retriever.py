@@ -10,6 +10,7 @@ from sage.data_manager import DataManager
 from sage.llm import build_llm_via_langchain
 from sage.reranker import build_reranker
 from sage.vector_store import build_vector_store_from_args
+from tqdm import tqdm, trange
 
 
 def build_retriever_from_args(args, data_manager: Optional[DataManager] = None):
