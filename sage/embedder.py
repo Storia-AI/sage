@@ -4,25 +4,17 @@ import json
 import logging
 import os
 import time
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections import Counter
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 import google.generativeai as genai
 import marqo
 import requests
 from openai import OpenAI
-from tenacity import retry
-from tenacity import stop_after_attempt
-from tenacity import wait_random_exponential
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
-from sage.chunker import Chunk
-from sage.chunker import Chunker
+from sage.chunker import Chunk, Chunker
 from sage.constants import TEXT_FIELD
 from sage.data_manager import DataManager
 
@@ -72,7 +64,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    sub_batch = batch[i: i + chunks_per_batch]
+                    sub_batch = batch[i : i + chunks_per_batch]
                     openai_batch_id = self._issue_job_for_chunks(sub_batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
                     batch_ids[openai_batch_id] = [chunk.metadata for chunk in sub_batch]
                     if max_embedding_jobs and len(batch_ids) >= max_embedding_jobs:
@@ -242,7 +234,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    sub_batch = batch[i: i + chunks_per_batch]
+                    sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Embedding %d chunks...", len(sub_batch))
                     result = self._make_batch_request(sub_batch)
                     for chunk, datum in zip(sub_batch, result["data"]):
@@ -314,7 +306,7 @@ class MarqoEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    sub_batch = batch[i: i + chunks_per_batch]
+                    sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Indexing %d chunks...", len(sub_batch))
                     self.index.add_documents(
                         documents=[chunk.metadata for chunk in sub_batch],
@@ -356,9 +348,8 @@ class GeminiBatchEmbedder(BatchEmbedder):
 
     def _make_batch_request(self, chunks: List[Chunk]) -> Dict:
         return genai.embed_content(
-            model=self.embedding_model,
-            content=[chunk.content for chunk in chunks],
-            task_type="retrieval_document")
+            model=self.embedding_model, content=[chunk.content for chunk in chunks], task_type="retrieval_document"
+        )
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire dataset."""
@@ -375,7 +366,7 @@ class GeminiBatchEmbedder(BatchEmbedder):
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
-                    sub_batch = batch[i: i + chunks_per_batch]
+                    sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Embedding %d chunks...", len(sub_batch))
                     result = self._make_batch_request(sub_batch)
                     for chunk, embedding in zip(sub_batch, result["embedding"]):

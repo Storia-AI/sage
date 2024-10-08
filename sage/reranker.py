@@ -10,6 +10,7 @@ from langchain_core.documents import BaseDocumentCompressor
 from langchain_nvidia_ai_endpoints import NVIDIARerank
 from langchain_voyageai import VoyageAIRerank
 
+
 class RerankerProvider(Enum):
     NONE = "none"
     HUGGINGFACE = "huggingface"

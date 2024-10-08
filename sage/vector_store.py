@@ -198,7 +198,7 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
             else:
                 print("punkt is not downloaded")
                 # Optionally download it
-                nltk.download('punkt_tab')
+                nltk.download("punkt_tab")
             corpus = [content for content, _ in data_manager.walk()]
             bm25_encoder = BM25Encoder()
             bm25_encoder.fit(corpus)

@@ -56,11 +56,11 @@ Today, most retrieval systems are *dense*. They pre-compute document *embeddings
 
 To this end, the [MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard) (Massive Text Embeddings Benchmark) offers a comprehensive comparison for open-source embeddings.
 
-To complement this, we compared proprietary embedding APIs from [OpenAI](https://platform.openai.com/docs/guides/embeddings) and [Voyage](https://docs.voyageai.com/docs/embeddings). The main advantage of using these providers (in addition to quality) is that they provide *batch* embedding APIs, so you can get an entire repository indexed relatively quickly without the headache of hosting your own embedding models (you can do so with a simple `sage-index $GITHUB_REPO` command).
+To complement this, we compared proprietary embedding APIs from [OpenAI](https://platform.openai.com/docs/guides/embeddings), [Gemini](https://ai.google.dev/gemini-api/docs/embeddings) and [Voyage](https://docs.voyageai.com/docs/embeddings). The main advantage of using these providers (in addition to quality) is that they provide *batch* embedding APIs, so you can get an entire repository indexed relatively quickly without the headache of hosting your own embedding models (you can do so with a simple `sage-index $GITHUB_REPO` command).
 
 ![embeddings-plot](assets/embeddings.png)
 
-The plot above shows the performance of the three types of embeddings from OpenAI (`text-embedding-3-small`, `text-embedding-3-large`, `text-embedding-ada-002`) and the code-specific embeddings from Voyage (`voyage-code-2`).
+The plot above shows the performance of the three types of embeddings from OpenAI (`text-embedding-3-small`, `text-embedding-3-large`, `text-embedding-ada-002`), Gemini (`text-embedding-004`) and the code-specific embeddings from Voyage (`voyage-code-2`).
 
 #### Experiment settings
 
@@ -71,7 +71,7 @@ The plot above shows the performance of the three types of embeddings from OpenA
 
 #### Results
 
-- Across most evaluation metrics, OpenAI's `text-embedding-3-small` performs best.
+- Across most evaluation metrics, OpenAI's `text-embedding-3-small` performs best, on par with Gemini's `text-embedding-004`.
 - It's remarkable that the `text-embedding-3-large` embeddings don't perform better, despite having double the size (3072 vs 1536).
 - The older `text-embedding-ada-002` embeddings are trailing last with a huge gap in performance, so this is your call to update your pipeline if you haven't already.
 
