@@ -46,6 +46,10 @@ jobs:
       run: |
         git diff --exit-code || git commit -am "Auto-format code with isort and black"
 
+    - name: Pull latest changes
+      run: |
+        git pull --rebase origin ${{ github.event.pull_request.head.ref }}
+
     - name: Push changes
       if: success()
       run: |
