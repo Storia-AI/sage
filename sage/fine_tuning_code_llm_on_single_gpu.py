@@ -404,16 +404,6 @@ if __name__ == "__main__":
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
-    # As you can see, by applying LoRA technique we will now need to train less than 1% of the parameters.
-
-    # ## Train the model
-    # Now that we have prepared the data, and optimized the model, we are ready to bring everything together to start the training.
-    # 
-    # To instantiate a `Trainer`, you need to define the training configuration. The most important is the `TrainingArguments`, which is a class that contains all the attributes to configure the training.
-    # 
-    # These are similar to any other kind of model training you may run, so we won't go into detail here.
-
-
     train_data.start_iteration = 0
     training_args = TrainingArguments(
         output_dir=f"runs/{args.run_name}/{args.output_dir}",
