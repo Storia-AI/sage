@@ -36,12 +36,14 @@ class LLMRetriever(BaseRetriever):
     """
 
     repo_manager: GitHubRepoManager = Field(...)
+    top_k: int = Field(...)
     all_repo_files: List[str] = Field(...)
     repo_hierarchy: str = Field(...)
 
-    def __init__(self, repo_manager: GitHubRepoManager):
+    def __init__(self, repo_manager: GitHubRepoManager, top_k: int):
         super().__init__()
         self.repo_manager = repo_manager
+        self.top_k = top_k
 
         # Best practice would be to make these fields @cached_property, but that impedes class serialization.
         self.all_repo_files = [metadata["file_path"] for metadata in self.repo_manager.walk(get_content=False)]
@@ -52,7 +54,7 @@ class LLMRetriever(BaseRetriever):
 
     def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> List[Document]:
         """Retrieve relevant documents for a given query."""
-        filenames = self._ask_llm_to_retrieve(user_query=query, top_k=5)  # TODO: Get top_k from constructor
+        filenames = self._ask_llm_to_retrieve(user_query=query, top_k=self.top_k)
         documents = []
         for filename in filenames:
             document = Document(
@@ -200,7 +202,7 @@ DO NOT RESPOND TO THE USER QUERY DIRECTLY. Instead, respond with full paths to r
 def build_retriever_from_args(args, data_manager: Optional[DataManager] = None):
     """Builds a retriever (with optional reranking) from command-line arguments."""
     if args.llm_retriever:
-        retriever = LLMRetriever(GitHubRepoManager.from_args(args))
+        retriever = LLMRetriever(GitHubRepoManager.from_args(args), top_k=args.retriever_top_k)
     else:
         if args.embedding_provider == "openai":
             embeddings = OpenAIEmbeddings(model=args.embedding_model)
