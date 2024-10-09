@@ -28,6 +28,10 @@ from peft.tuners.lora import LoraLayer
 from peft import PeftModel
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
+"""
+Adapted from https://huggingface.co/learn/cookbook/en/fine_tuning_code_llm_on_single_gpu
+"""
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="bigcode/starcoderbase-1b", help="Model checkpoint on the Hugging Face Hub")
 parser.add_argument("--dataset", type=str, default="smangrul/hf-stack-v1", help="Dataset on the Hugging Face Hub")
@@ -362,16 +366,6 @@ if __name__ == "__main__":
     with open('eval_dataset.pkl', 'wb') as f:
         pickle.dump(eval_dataset, f)
 
-
-    # ## Prepare the model
-    # Now that the data is prepared, it's time to load the model! We're going to load the quantized version of the model.
-    # This will allow us to reduce memory usage, as quantization represents data with fewer bits. We'll use the `bitsandbytes` library to quantize the model, as it has a nice integration with `transformers`. All we need to do is define a `bitsandbytes` config, and then use it when loading the model.
-    # There are different variants of 4bit quantization, but generally, we recommend using NF4 quantization for better performance (`bnb_4bit_quant_type="nf4"`).
-    # The `bnb_4bit_use_double_quant` option adds a second quantization after the first one to save an additional 0.4 bits per parameter.
-    # To learn more about quantization, check out the ["Making LLMs even more accessible with bitsandbytes, 4-bit quantization and QLoRA" blog post](https://huggingface.co/blog/4bit-transformers-bitsandbytes).
-    # Once defined, pass the config to the `from_pretrained` method to load the quantized version of the model.
-
-
     # 4-bit quantization
     compute_dtype = getattr(torch, args.bnb_4bit_compute_dtype)
 
@@ -396,10 +390,6 @@ if __name__ == "__main__":
 
     # When using a quantized model for training, you need to call the `prepare_model_for_kbit_training()` function to preprocess the quantized model for training.
     model = prepare_model_for_kbit_training(model)
-
-    # Now that the quantized model is ready, we can set up a LoRA configuration. LoRA makes fine-tuning more efficient by drastically reducing the number of trainable parameters.
-    # To train a model using LoRA technique, we need to wrap the base model as a `PeftModel`. This involves definign LoRA configuration with `LoraConfig`, and wrapping the original model with `get_peft_model()` using the `LoraConfig`.
-    # To learn more about LoRA and its parameters, refer to [PEFT documentation](https://huggingface.co/docs/peft/main/en/conceptual_guides/lora).
 
     # Set up lora
     peft_config = LoraConfig(
@@ -463,3 +453,5 @@ if __name__ == "__main__":
     # Finally, you can push the fine-tuned model to your Hub repository to share with your team.
     trainer.push_to_hub()
     wandb.finish()
+    
+    # TODO (mihail): Add appropriate eval metrics
