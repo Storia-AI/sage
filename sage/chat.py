@@ -71,20 +71,10 @@ def main():
         default=False,
         help="Whether to make the gradio app publicly accessible.",
     )
-    sage_config.add_config_args(parser)
 
-    arg_validators = [
-        sage_config.add_repo_args(parser),
-        sage_config.add_embedding_args(parser),
-        sage_config.add_vector_store_args(parser),
-        sage_config.add_reranking_args(parser),
-        sage_config.add_llm_args(parser),
-    ]
-
+    validator = sage_config.add_all_args(parser)
     args = parser.parse_args()
-
-    for validator in arg_validators:
-        validator(args)
+    validator(args)
 
     rag_chain = build_rag_chain(args)
 
