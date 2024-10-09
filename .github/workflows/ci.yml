@@ -49,9 +49,9 @@ jobs:
     - name: Pull latest changes
       run: |
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          git pull --rebase origin ${{ github.event.pull_request.head.ref }}
+          git pull origin ${{ github.event.pull_request.head.ref }}
         else
-          git pull --rebase origin main
+          git pull origin main
         fi
 
     - name: Push changes
