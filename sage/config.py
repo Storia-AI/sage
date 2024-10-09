@@ -245,7 +245,9 @@ def add_all_args(parser: ArgumentParser) -> Callable:
     def validate_all(args):
         for validator in arg_validators:
             validator(args)
+
     return validate_all
+
 
 def validate_repo_args(args):
     """Validates the configuration of the repository."""
