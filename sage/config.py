@@ -12,8 +12,6 @@ from configargparse import ArgumentParser
 from sage.reranker import RerankerProvider
 
 # Limits defined here: https://ai.google.dev/gemini-api/docs/models/gemini
-# NOTE: MAX_CHUNKS_PER_BATCH isn't documented anywhere but we pick a reasonable value
-GEMINI_MAX_CHUNKS_PER_BATCH = 64
 GEMINI_MAX_TOKENS_PER_CHUNK = 2048
 
 MARQO_MAX_CHUNKS_PER_BATCH = 64
@@ -345,13 +343,8 @@ def _validate_gemini_embedding_args(args):
         "GOOGLE_API_KEY"
     ], "Please set the GOOGLE_API_KEY environment variable if using `gemini` embeddings."
     if not args.chunks_per_batch:
-        args.chunks_per_batch = GEMINI_MAX_CHUNKS_PER_BATCH
-    elif args.chunks_per_batch > GEMINI_MAX_CHUNKS_PER_BATCH:
-        args.chunks_per_batch = GEMINI_MAX_CHUNKS_PER_BATCH
-        logging.warning(
-            f"Gemini enforces a limit of {GEMINI_MAX_CHUNKS_PER_BATCH} chunks per batch. "
-            "Overwriting embeddings.chunks_per_batch."
-        )
+        # This value is reasonable but arbitrary (i.e. Gemini does not explicitly enforce a limit).
+        args.chunks_per_batch = 2000
 
     if not args.tokens_per_chunk:
         args.tokens_per_chunk = GEMINI_MAX_TOKENS_PER_CHUNK
