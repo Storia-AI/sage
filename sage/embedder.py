@@ -344,7 +344,7 @@ class GeminiBatchEmbedder(BatchEmbedder):
         self.chunker = chunker
         self.embedding_data = []
         self.embedding_model = embedding_model
-        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
     def _make_batch_request(self, chunks: List[Chunk]) -> Dict:
         return genai.embed_content(
