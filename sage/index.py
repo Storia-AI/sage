@@ -36,6 +36,10 @@ def main():
     for validator in arg_validators:
         validator(args)
 
+    if args.llm_retriever:
+        logging.warning("The LLM retriever does not require indexing, so this script is a no-op.")
+        return
+
     # Additionally validate embedder and vector store compatibility.
     if args.embedding_provider == "openai" and args.vector_store_provider != "pinecone":
         parser.error("When using OpenAI embedder, the vector store type must be Pinecone.")
@@ -50,22 +54,7 @@ def main():
     repo_embedder = None
     if args.index_repo:
         logging.info("Cloning the repository...")
-        repo_manager = GitHubRepoManager(
-            args.repo_id,
-            commit_hash=args.commit_hash,
-            access_token=os.getenv("GITHUB_TOKEN"),
-            local_dir=args.local_dir,
-            inclusion_file=args.include,
-            exclusion_file=args.exclude,
-        )
-
-        success = repo_manager.download()
-        if not success:
-            raise ValueError(
-                f"Unable to clone {args.repo_id}. Please check that it exists and you have access to it. "
-                "For private repositories, please set the GITHUB_TOKEN variable in your environment."
-            )
-
+        repo_manager = GitHubRepoManager.from_args(args)
         logging.info("Embedding the repo...")
         chunker = UniversalFileChunker(max_tokens=args.tokens_per_chunk)
         repo_embedder = build_batch_embedder_from_flags(repo_manager, chunker, args)

@@ -175,15 +175,14 @@ class GitHubRepoManager(DataManager):
             )
         return True
 
-    def walk(self) -> Generator[Tuple[Any, Dict], None, None]:
+    def walk(self, get_content: bool = True) -> Generator[Tuple[Any, Dict], None, None]:
         """Walks the local repository path and yields a tuple of (content, metadata) for each file.
         The filepath is relative to the root of the repository (e.g. "org/repo/your/file/path.py").
 
         Args:
-            included_extensions: Optional set of extensions to include.
-            excluded_extensions: Optional set of extensions to exclude.
+            get_content: When set to True, yields (content, metadata) tuples. When set to False, yields metadata only.
         """
-        # We will keep apending to these files during the iteration, so we need to clear them first.
+        # We will keep appending to these files during the iteration, so we need to clear them first.
         repo_name = self.repo_id.replace("/", "_")
         included_log_file = os.path.join(self.log_dir, f"included_{repo_name}.txt")
         excluded_log_file = os.path.join(self.log_dir, f"excluded_{repo_name}.txt")
@@ -208,20 +207,49 @@ class GitHubRepoManager(DataManager):
                     f.write(path + "\n")
 
             for file_path in included_file_paths:
+                relative_file_path = file_path[len(self.local_dir) + 1 :]
+                metadata = {
+                    "file_path": relative_file_path,
+                    "url": self.url_for_file(relative_file_path),
+                }
+
+                if not get_content:
+                    yield metadata
+                    continue
+
                 with open(file_path, "r") as f:
                     try:
                         contents = f.read()
                     except UnicodeDecodeError:
                         logging.warning("Unable to decode file %s. Skipping.", file_path)
                         continue
-                    relative_file_path = file_path[len(self.local_dir) + 1 :]
-                    metadata = {
-                        "file_path": relative_file_path,
-                        "url": self.url_for_file(relative_file_path),
-                    }
                     yield contents, metadata
 
     def url_for_file(self, file_path: str) -> str:
         """Converts a repository file path to a GitHub link."""
         file_path = file_path[len(self.repo_id) + 1 :]
         return f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"
+
+    def read_file(self, relative_file_path: str) -> str:
+        """Reads the content of the file at the given path."""
+        file_path = os.path.join(self.local_dir, relative_file_path)
+        with open(file_path, "r") as f:
+            return f.read()
+
+    def from_args(args: Dict):
+        """Creates a GitHubRepoManager from command-line arguments and clones the underlying repository."""
+        repo_manager = GitHubRepoManager(
+            repo_id=args.repo_id,
+            commit_hash=args.commit_hash,
+            access_token=os.getenv("GITHUB_TOKEN"),
+            local_dir=args.local_dir,
+            inclusion_file=args.include,
+            exclusion_file=args.exclude,
+        )
+        success = repo_manager.download()
+        if not success:
+            raise ValueError(
+                f"Unable to clone {args.repo_id}. Please check that it exists and you have access to it. "
+                "For private repositories, please set the GITHUB_TOKEN variable in your environment."
+            )
+        return repo_manager

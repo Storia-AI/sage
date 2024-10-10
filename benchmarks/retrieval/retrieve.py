@@ -41,24 +41,12 @@ def main():
     )
 
     parser.add("--max-instances", default=None, type=int, help="Maximum number of instances to process.")
-    sage.config.add_config_args(parser)
-    sage.config.add_llm_args(parser)  # Needed for --multi-query-retriever, which rewrites the query with an LLM.
-    sage.config.add_embedding_args(parser)
-    sage.config.add_vector_store_args(parser)
-    sage.config.add_reranking_args(parser)
-    sage.config.add_repo_args(parser)
-    sage.config.add_indexing_args(parser)
+
+    validator = sage.config.add_all_args(parser)
     args = parser.parse_args()
-    sage.config.validate_vector_store_args(args)
-    repo_manager = GitHubRepoManager(
-        args.repo_id,
-        commit_hash=args.commit_hash,
-        access_token=os.getenv("GITHUB_TOKEN"),
-        local_dir=args.local_dir,
-        inclusion_file=args.include,
-        exclusion_file=args.exclude,
-    )
-    repo_manager.download()
+    validator(args)
+
+    repo_manager = GitHubRepoManager.from_args(args)
     retriever = build_retriever_from_args(args, repo_manager)
 
     with open(args.benchmark, "r") as f:

@@ -71,6 +71,7 @@ def add_config_args(parser: ArgumentParser):
     args, _ = parser.parse_known_args()
     config_file = pkg_resources.resource_filename(__name__, f"configs/{args.mode}.yaml")
     parser.set_defaults(config=config_file)
+    return lambda _: True
 
 
 def add_repo_args(parser: ArgumentParser) -> Callable:
@@ -157,6 +158,14 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
         help="When set to True, we rewrite the query 5 times, perform retrieval for each rewrite, and take the union "
         "of retrieved documents. See https://python.langchain.com/v0.1/docs/modules/data_connection/retrievers/MultiQueryRetriever/.",
     )
+    parser.add(
+        "--llm-retriever",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="When set to True, we use an LLM for retrieval: we pass the repository file hierarchy together with the "
+        "user query and ask the LLM to choose relevant files solely based on their paths. No indexing will be done, so "
+        "all the vector store / embedding arguments will be ignored.",
+    )
     return validate_vector_store_args
 
 
@@ -221,6 +230,25 @@ def add_llm_args(parser: ArgumentParser) -> Callable:
     return lambda _: True
 
 
+def add_all_args(parser: ArgumentParser) -> Callable:
+    """Adds all arguments to the parser and returns a validator."""
+    arg_validators = [
+        add_config_args(parser),
+        add_repo_args(parser),
+        add_embedding_args(parser),
+        add_vector_store_args(parser),
+        add_reranking_args(parser),
+        add_indexing_args(parser),
+        add_llm_args(parser),
+    ]
+
+    def validate_all(args):
+        for validator in arg_validators:
+            validator(args)
+
+    return validate_all
+
+
 def validate_repo_args(args):
     """Validates the configuration of the repository."""
     if not re.match(r"^[^/]+/[^/]+$", args.repo_id):
@@ -233,7 +261,7 @@ def _validate_openai_embedding_args(args):
         raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
     if not args.embedding_model:
-        args.embedding_model = "text-embedding-ada-002"
+        args.embedding_model = "text-embedding-3-small"
 
     if args.embedding_model not in OPENAI_DEFAULT_EMBEDDING_SIZE.keys():
         raise ValueError(f"Unrecognized embeddings.model={args.embedding_model}")
@@ -347,6 +375,19 @@ def validate_embedding_args(args):
 
 def validate_vector_store_args(args):
     """Validates the configuration of the vector store and sets defaults."""
+    if args.llm_retriever:
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            raise ValueError(
+                "Please set the ANTHROPIC_API_KEY environment variable to use the LLM retriever. "
+                "(We're constrained to Claude because we need prompt caching.)"
+            )
+
+        if args.index_issues:
+            # The LLM retriever only makes sense on the code repository, since it passes file paths to the LLM.
+            raise ValueError("Cannot use --index-issues with --llm-retriever.")
+
+        # When using an LLM retriever, all the vector store arguments are ignored.
+        return
 
     if not args.index_namespace:
         # Attempt to derive a default index namespace from the repository information.

@@ -225,9 +225,15 @@ Currently, we support the following types of retrieval:
     - Note this is not available when running locally, only when using Pinecone as a vector store.
     - Contrary to [Anthropic's findings](https://www.anthropic.com/news/contextual-retrieval), we find that BM25 is actually damaging performance *on codebases*, because it gives undeserved advantage to Markdown files.
 
-- **Multi-query retrieval** performs multiple query rewrites, makes a separate retrieval call for each, and takes the union of the retrieved documents. You can activate it by passing `--multi-query-retrieval`.
+- **Multi-query retrieval** performs multiple query rewrites, makes a separate retrieval call for each, and takes the union of the retrieved documents. You can activate it by passing `--multi-query-retrieval`. This can be combined with both vanilla and hybrid RAG.
 
     - We find that [on our benchmark](benchmark/retrieval/README.md) this only marginally improves retrieval quality (from 0.44 to 0.46 R-precision) while being significantly slower and more expensive due to LLM calls. But your mileage may vary.
+
+- **LLM-only retrieval** completely circumvents indexing the codebase. We simply enumerate all file paths and pass them to an LLM together with the user query. We ask the LLM which files are likely to be relevant for the user query, solely based on their filenames. You can activate it by passing `--llm-retriever`.
+
+    - We find that [on our benchmark](benchmark/retrieval/README.md) the performance is comparable with vector database solutions (R-precision is 0.44 for both). This is quite remarkable, since we've saved so much effort by not indexing the codebase. However, we are reluctant to claim that these findings generalize, for the following reasons:
+        - Our (artificial) dataset occasionally contains explicit path names in the query, making it trivial for the LLM. Sample query: *"Alice is managing a series of machine learning experiments. Please explain in detail how `main` in `examples/pytorch/image-pretraining/run_mim.py` allows her to organize the outputs of each experiment in separate directories."*
+        - Our benchmark focuses on the Transformers library, which is well-maintained and the file paths are often meaningful. This might not be the case for all codebases.
 
 </details>
 
