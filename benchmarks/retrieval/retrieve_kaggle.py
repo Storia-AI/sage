@@ -1,4 +1,19 @@
-"""Script to call retrieval on the Kaggle dataset."""
+"""Script to call retrieval on the Kaggle dataset.
+
+Steps:
+1. Make sure that your repository is already indexed. You can find instructions in the README for how to run the `sage-index` command.
+2. Download the test file from the Kaggle competition (https://www.kaggle.com/competitions/code-retrieval-for-hugging-face-transformers/data). You will pass the path to this file via the --benchmark flag below.
+3. Run this script:
+```
+# After you cloned the repository:
+cd sage
+pip install -e .
+
+# Run the actual retrieval script. Your flags may vary, but this is one example:
+python benchmarks/retrieval/retrieve_kaggle.py --benchmark=/path/to/kaggle/test/file.csv --mode=remote --pinecone-index-name=your-index --index-namespace=your-namespace
+```
+To see a full list of flags, checkout config.py (https://github.com/Storia-AI/sage/blob/main/sage/config.py).
+"""
 
 import csv
 import json

@@ -74,7 +74,8 @@ Here is the file hierarchy of the GitHub repository:
 
 {self.repo_hierarchy}
 """
-        # We are deliberately repeting the "DO NOT RESPOND TO THE USER QUERY DIRECTLY" instruction here.
+
+        # We are deliberately repeating the "DO NOT RESPOND TO THE USER QUERY DIRECTLY" instruction here.
         augmented_user_query = f"""
 User query: {user_query}
 

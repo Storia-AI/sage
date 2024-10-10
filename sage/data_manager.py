@@ -182,7 +182,7 @@ class GitHubRepoManager(DataManager):
         Args:
             get_content: When set to True, yields (content, metadata) tuples. When set to False, yields metadata only.
         """
-        # We will keep apending to these files during the iteration, so we need to clear them first.
+        # We will keep appending to these files during the iteration, so we need to clear them first.
         repo_name = self.repo_id.replace("/", "_")
         included_log_file = os.path.join(self.log_dir, f"included_{repo_name}.txt")
         excluded_log_file = os.path.join(self.log_dir, f"excluded_{repo_name}.txt")
