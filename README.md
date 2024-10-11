@@ -36,7 +36,9 @@ Alternatively, you can manually create a virtual environment and install Code Sa
 ```
 python -m venv sage-venv
 source sage-venv/bin/activate
-pip install git+https://github.com/Storia-AI/sage.git@main
+git clone https://github.com/Storia-AI/sage.git
+cd sage
+pip install -e .
 ```
 
 </details>
