@@ -40,9 +40,7 @@ def test_code_chunker_happy_path():
     assert len(chunks) >= 1
 
 
-@mark.parametrize(
-    "filename", [param("assets/sample-script.ts"), param("assets/sample-script.tsx")]
-)
+@mark.parametrize("filename", [param("assets/sample-script.ts"), param("assets/sample-script.tsx")])
 def test_code_chunker_typescript_happy_path(filename):
     """Tests the happy path for the CodeFileChunker on .ts and .tsx files."""
     file_path = os.path.join(os.path.dirname(__file__), filename)
