@@ -170,9 +170,6 @@ class CodeFileChunker(Chunker):
     def is_code_file(filename: str) -> bool:
         """Checks whether pygment & tree_sitter can parse the file as code."""
         language = CodeFileChunker._get_language_from_filename(filename)
-        # tree-sitter-language-pack crashes on TypeScript files. We'll wait for a bit to see if the issue gets
-        # resolved, otherwise we'll have to clone and fix the library.
-        # See https://github.com/Goldziher/tree-sitter-language-pack/issues/5
         return language and language not in ["text only", "None"]
 
     @staticmethod
