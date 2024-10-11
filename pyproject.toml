@@ -56,6 +56,7 @@ dependencies = [
     "tokenizers==0.19.1",
     "transformers==4.44.2",
     "tree-sitter==0.22.3",
+    "tree-sitter-typescript==0.21.2",
     "tree-sitter-language-pack==0.2.0",
     "voyageai==0.2.3",
     "setuptools"  # Added from the setup.py install_requires

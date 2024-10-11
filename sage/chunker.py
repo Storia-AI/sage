@@ -173,7 +173,7 @@ class CodeFileChunker(Chunker):
         # tree-sitter-language-pack crashes on TypeScript files. We'll wait for a bit to see if the issue gets
         # resolved, otherwise we'll have to clone and fix the library.
         # See https://github.com/Goldziher/tree-sitter-language-pack/issues/5
-        return language and language not in ["text only", "None", "typescript", "tsx"]
+        return language and language not in ["text only", "None"]
 
     @staticmethod
     def parse_tree(filename: str, content: str) -> List[str]:
@@ -182,12 +182,6 @@ class CodeFileChunker(Chunker):
 
         if not language or language in ["text only", "None"]:
             logging.debug("%s doesn't seem to be a code file.", filename)
-            return None
-
-        if language in ["typescript", "tsx"]:
-            # tree-sitter-language-pack crashes on TypeScript files. We'll wait for a bit to see if the issue gets
-            # resolved, otherwise we'll have to clone and fix the library.
-            # See https://github.com/Goldziher/tree-sitter-language-pack/issues/5
             return None
 
         try:
