@@ -20,7 +20,7 @@
 ## Installation
 
 <details open>
-<summary><strong>Using pipx (recommended) </strong></summary>
+<summary><strong>Using pipx (for regular users) </strong></summary>
 Make sure pipx is installed on your system (see <a href="https://pipx.pypa.io/stable/installation/">instructions</a>), then run:
 
 ```
@@ -30,7 +30,7 @@ pipx install git+https://github.com/Storia-AI/sage.git@main
 </details>
 
 <details>
-<summary><strong>Using venv and pip</strong></summary>
+<summary><strong>Using venv and pip (for contributors)</strong></summary>
 Alternatively, you can manually create a virtual environment and install Code Sage via pip:
 
 ```
