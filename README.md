@@ -45,7 +45,7 @@ pip install git+https://github.com/Storia-AI/sage.git@main
 
 `sage` performs two steps:
 
-1. Indexes your codebase (requiring an embdder and a vector store)
+1. Indexes your codebase (requiring an embedder and a vector store)
 2. Enables chatting via LLM + RAG (requiring access to an LLM)
 
 <details open>
