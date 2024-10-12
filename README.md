@@ -1,4 +1,5 @@
 <div align="center">
+    <a name="readme-top"></a>
     <img src="assets/storia-logo.png" alt="Logo" width="50" style="border-radius: 15px;">
     <h1 align="center">Sage: Chat with any codebase</h1>
     <div>
@@ -272,3 +273,15 @@ If you're the maintainer of an OSS repo and would like a dedicated page on Code 
 We built the code purposefully modular so that you can plug in your desired embeddings, LLM and vector stores providers by simply implementing the relevant abstract classes.
 
 Feel free to send feature requests to [founders@storia.ai](mailto:founders@storia.ai) or make a pull request!
+
+# Contributors
+
+<a href="https://github.com/Storia-AI/sage/graphs/contributors">
+  <img alt="contributors" src="https://contrib.rocks/image?repo=Storia-AI/sage"/>
+</a>
+
+<p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
+    <a href="#readme-top" style="text-decoration: none; color: #007bff; font-weight: bold;">
+        ↑ Back to Top ↑
+    </a>
+</p>
