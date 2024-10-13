@@ -8,9 +8,6 @@ on:
     branches:
       - main
 
-permissions:
-  contents: write
-
 jobs:
   format-check:
     runs-on: ubuntu-latest
@@ -29,36 +26,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install black isort
 
-    - name: Run isort
+    - name: Run isort and check for unformatted files
       run: |
-        isort .
+        isort --check-only .
 
-    - name: Run black
+    - name: Run black and check for unformatted files
       run: |
-        black --line-length=120 .
+        black --check --line-length=120 .
 
-    - name: Configure Git
+    - name: Fail if formatting is incorrect
       run: |
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-
-    - name: Check if any files were modified
-      run: |
-        git diff --exit-code || git commit -am "Auto-format code with isort and black"
-
-    - name: Pull latest changes
-      run: |
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          git pull --no-rebase origin ${{ github.event.pull_request.head.ref }}
-        else
-          git pull --no-rebase origin main
-        fi
-
-    - name: Push changes
-      if: success()
-      run: |
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          git push origin HEAD:${{ github.event.pull_request.head.ref }};
-        else
-          git push origin HEAD:main;
-        fi
+        echo "Code is not formatted correctly. Please run 'isort .' and 'black --line-length=120 .' locally to fix."
+        exit 1
+      if: failure()
