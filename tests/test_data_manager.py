@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
-from data_manager import GitHubRepoManager 
+from sage.data_manager import GitHubRepoManager 
 class TestGitHubRepoManager(unittest.TestCase):
-     @patch('git.Repo.clone_from')  
+    @patch('git.Repo.clone_from')  
     def test_clone_repo(self, mock_clone):
         """
         test the download() method of GitHubRepoManager by mocking the cloning process.
