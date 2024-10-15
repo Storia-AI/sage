@@ -17,6 +17,7 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential
 from sage.chunker import Chunk, Chunker
 from sage.constants import TEXT_FIELD
 from sage.data_manager import DataManager
+from tqdm import tqdm, trange
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
@@ -57,16 +58,16 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         chunk_count = 0
         dataset_name = self.data_manager.dataset_id.replace("/", "_")
 
-        for content, metadata in self.data_manager.walk():
+        for content, metadata in tqdm(self.data_manager.walk()):
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
 
             if len(batch) > chunks_per_batch:
-                for i in range(0, len(batch), chunks_per_batch):
+                for i in tqdm(range(0, len(batch), chunks_per_batch)):
                     sub_batch = batch[i : i + chunks_per_batch]
                     openai_batch_id = self._issue_job_for_chunks(sub_batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
-                    batch_ids[openai_batch_id] = [chunk.metadata for chunk in sub_batch]
+                    batch_ids[openai_batch_id] = [chunk.metadata for chunk in tqdm(sub_batch)]
                     if max_embedding_jobs and len(batch_ids) >= max_embedding_jobs:
                         logging.info("Reached the maximum number of embedding jobs. Stopping.")
                         return
@@ -75,7 +76,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         # Finally, commit the last batch.
         if batch:
             openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
-            batch_ids[openai_batch_id] = [chunk.metadata for chunk in batch]
+            batch_ids[openai_batch_id] = [chunk.metadata for chunk in tqdm(batch)]
         logging.info("Issued %d jobs for %d chunks.", len(batch_ids), chunk_count)
 
         timestamp = int(time.time())
@@ -95,9 +96,9 @@ class OpenAIBatchEmbedder(BatchEmbedder):
             batch_ids = json.load(f)
 
         job_ids = batch_ids.keys()
-        statuses = [self.client.batches.retrieve(job_id.strip()) for job_id in job_ids]
-        are_ready = all(status.status in ["completed", "failed"] for status in statuses)
-        status_counts = Counter(status.status for status in statuses)
+        statuses = [self.client.batches.retrieve(job_id.strip()) for job_id in tqdm(job_ids)]
+        are_ready = all(status.status in ["completed", "failed"] for status in tqdm(statuses))
+        status_counts = Counter(status.status for status in tqdm(statuses))
         logging.info("Job statuses: %s", status_counts)
         return are_ready
 
@@ -117,9 +118,9 @@ class OpenAIBatchEmbedder(BatchEmbedder):
             batch_ids = json.load(f)
 
         job_ids = batch_ids.keys()
-        statuses = [self.client.batches.retrieve(job_id.strip()) for job_id in job_ids]
+        statuses = [self.client.batches.retrieve(job_id.strip()) for job_id in tqdm(job_ids)]
 
-        for idx, status in enumerate(statuses):
+        for idx, status in tqdm(enumerate(statuses)):
             if status.status == "failed":
                 logging.error("Job failed: %s", status)
                 continue
@@ -134,7 +135,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
             data = json.loads(file_response.text)["response"]["body"]["data"]
             logging.info("Job %s generated %d embeddings.", status.id, len(data))
 
-            for datum in data:
+            for datum in tqdm(data):
                 idx = int(datum["index"])
                 metadata = batch_metadata[idx]
                 if (
@@ -184,7 +185,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         if not os.path.exists(directory):
             os.makedirs(directory)
         with open(output_file, "w") as f:
-            for item in list_of_dicts:
+            for item in tqdm(list_of_dicts):
                 json.dump(item, f)
                 f.write("\n")
 
@@ -193,7 +194,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         """Convert a list of chunks to a batch request."""
         body = {
             "model": model,
-            "input": [chunk.content for chunk in chunks],
+            "input": [chunk.content for chunk in tqdm(chunks)],
         }
 
         # These are the only two models that support a dynamic embedding size.
@@ -222,7 +223,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
         batch = []
         chunk_count = 0
 
-        for content, metadata in self.data_manager.walk():
+        for content, metadata in tqdm(self.data_manager.walk()):
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
@@ -233,11 +234,11 @@ class VoyageBatchEmbedder(BatchEmbedder):
                 time.sleep(60)  # Voyage API rate limits to 1m tokens per minute; we'll pause every 900k tokens.
 
             if len(batch) > chunks_per_batch:
-                for i in range(0, len(batch), chunks_per_batch):
+                for i in tqdm(range(0, len(batch), chunks_per_batch)):
                     sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Embedding %d chunks...", len(sub_batch))
                     result = self._make_batch_request(sub_batch)
-                    for chunk, datum in zip(sub_batch, result["data"]):
+                    for chunk, datum in tqdm(zip(sub_batch, result["data"])):
                         self.embedding_data.append((chunk.metadata, datum["embedding"]))
                 batch = []
 
@@ -245,7 +246,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
         if batch:
             logging.info("Embedding %d chunks...", len(batch))
             result = self._make_batch_request(batch)
-            for chunk, datum in zip(batch, result["data"]):
+            for chunk, datum in tqdm(zip(batch, result["data"])):
                 self.embedding_data.append((chunk.metadata, datum["embedding"]))
 
         logging.info(f"Successfully embedded {chunk_count} chunks.")
@@ -257,7 +258,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
 
     def download_embeddings(self, *args, **kwargs) -> Generator[Vector, None, None]:
         """Yields (chunk_metadata, embedding) pairs for each chunk in the dataset."""
-        for chunk_metadata, embedding in self.embedding_data:
+        for chunk_metadata, embedding in tqdm(self.embedding_data):
             yield (chunk_metadata, embedding)
 
     @retry(wait=wait_random_exponential(multiplier=1, max=60), stop=stop_after_attempt(6))
@@ -265,7 +266,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
         """Makes a batch request to the Voyage API with exponential backoff when we hit rate limits."""
         url = "https://api.voyageai.com/v1/embeddings"
         headers = {"Authorization": f"Bearer {os.environ['VOYAGE_API_KEY']}", "Content-Type": "application/json"}
-        payload = {"input": [chunk.content for chunk in chunks], "model": self.embedding_model}
+        payload = {"input": [chunk.content for chunk in tqdm(chunks)], "model": self.embedding_model}
 
         response = requests.post(url, json=payload, headers=headers)
         if not response.status_code == 200:
@@ -286,7 +287,7 @@ class MarqoEmbedder(BatchEmbedder):
         self.client = marqo.Client(url=url)
         self.index = self.client.index(index_name)
 
-        all_index_names = [result["indexName"] for result in self.client.get_indexes()["results"]]
+        all_index_names = [result["indexName"] for result in tqdm(self.client.get_indexes()["results"])]
         if not index_name in all_index_names:
             self.client.create_index(index_name, model=model)
 
@@ -299,17 +300,17 @@ class MarqoEmbedder(BatchEmbedder):
         batch = []
         job_count = 0
 
-        for content, metadata in self.data_manager.walk():
+        for content, metadata in tqdm(self.data_manager.walk()):
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
 
             if len(batch) > chunks_per_batch:
-                for i in range(0, len(batch), chunks_per_batch):
+                for i in tqdm(range(0, len(batch), chunks_per_batch)):
                     sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Indexing %d chunks...", len(sub_batch))
                     self.index.add_documents(
-                        documents=[chunk.metadata for chunk in sub_batch],
+                        documents=[chunk.metadata for chunk in tqdm(sub_batch)],
                         tensor_fields=[TEXT_FIELD],
                     )
                     job_count += 1
@@ -321,7 +322,7 @@ class MarqoEmbedder(BatchEmbedder):
 
         # Finally, commit the last batch.
         if batch:
-            self.index.add_documents(documents=[chunk.metadata for chunk in batch], tensor_fields=[TEXT_FIELD])
+            self.index.add_documents(documents=[chunk.metadata for chunk in tqdm(batch)], tensor_fields=[TEXT_FIELD])
         logging.info(f"Successfully embedded {chunk_count} chunks.")
 
     def embeddings_are_ready(self) -> bool:
@@ -348,7 +349,7 @@ class GeminiBatchEmbedder(BatchEmbedder):
 
     def _make_batch_request(self, chunks: List[Chunk]) -> Dict:
         return genai.embed_content(
-            model=self.embedding_model, content=[chunk.content for chunk in chunks], task_type="retrieval_document"
+            model=self.embedding_model, content=[chunk.content for chunk in tqdm(chunks)], task_type="retrieval_document"
         )
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
@@ -359,17 +360,17 @@ class GeminiBatchEmbedder(BatchEmbedder):
         request_count = 0
         last_request_time = time.time()
 
-        for content, metadata in self.data_manager.walk():
+        for content, metadata in tqdm(self.data_manager.walk()):
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
 
             if len(batch) > chunks_per_batch:
-                for i in range(0, len(batch), chunks_per_batch):
+                for i in tqdm(range(0, len(batch), chunks_per_batch)):
                     sub_batch = batch[i : i + chunks_per_batch]
                     logging.info("Embedding %d chunks...", len(sub_batch))
                     result = self._make_batch_request(sub_batch)
-                    for chunk, embedding in zip(sub_batch, result["embedding"]):
+                    for chunk, embedding in tqdm(zip(sub_batch, result["embedding"])):
                         self.embedding_data.append((chunk.metadata, embedding))
                     request_count += 1
 
@@ -393,7 +394,7 @@ class GeminiBatchEmbedder(BatchEmbedder):
         if batch:
             logging.info("Embedding %d chunks...", len(batch))
             result = self._make_batch_request(batch)
-            for chunk, embedding in zip(batch, result["embedding"]):
+            for chunk, embedding in tqdm(zip(batch, result["embedding"]):)
                 self.embedding_data.append((chunk.metadata, embedding))
 
         logging.info(f"Successfully embedded {chunk_count} chunks.")
@@ -404,7 +405,7 @@ class GeminiBatchEmbedder(BatchEmbedder):
 
     def download_embeddings(self, *args, **kwargs) -> Generator[Vector, None, None]:
         """Yields (chunk_metadata, embedding) pairs for each chunk in the dataset."""
-        for chunk_metadata, embedding in self.embedding_data:
+        for chunk_metadata, embedding in tqdm(self.embedding_data):
             yield chunk_metadata, embedding
 
 

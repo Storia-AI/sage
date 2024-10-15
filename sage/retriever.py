@@ -19,6 +19,7 @@ from sage.data_manager import DataManager, GitHubRepoManager
 from sage.llm import build_llm_via_langchain
 from sage.reranker import build_reranker
 from sage.vector_store import build_vector_store_from_args
+from tqdm import tqdm, trange
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()

@@ -10,6 +10,7 @@ import tiktoken
 from sage.chunker import Chunk, Chunker
 from sage.constants import TEXT_FIELD
 from sage.data_manager import DataManager
+from tqdm import tqdm, trange
 
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
@@ -64,7 +65,7 @@ class GitHubIssuesManager(DataManager):
             logging.info(f"Fetching issues from {url}")
             response = self._get_page_of_issues(url)
             response.raise_for_status()
-            for issue in response.json():
+            for issue in tqdm(response.json()):
                 if not "pull_request" in issue:
                     self.issues.append(
                         GitHubIssue(
@@ -83,7 +84,7 @@ class GitHubIssuesManager(DataManager):
 
     def walk(self) -> Generator[Tuple[Any, Dict], None, None]:
         """Yields a tuple of (issue_content, issue_metadata) for each GitHub issue in the repository."""
-        for issue in self.issues:
+        for issue in tqdm(self.issues):
             yield issue, {}  # empty metadata
 
     @staticmethod
@@ -98,7 +99,7 @@ class GitHubIssuesManager(DataManager):
         link_header = response.headers.get("link")
         if link_header:
             links = link_header.split(", ")
-            for link in links:
+            for link in tqdm(links):
                 url, rel = link.split("; ")
                 url = url[1:-1]  # The URL is enclosed in angle brackets
                 rel = rel[5:-1]  # e.g. rel="next" -> next
@@ -130,7 +131,7 @@ class GitHubIssuesManager(DataManager):
             logging.warn(f"Timeout fetching comments from {comments_url}")
             return []
         comments = []
-        for comment in response.json():
+        for comment in tqdm(response.json()):
             comments.append(
                 GitHubIssueComment(
                     url=comment["url"],
@@ -222,7 +223,7 @@ class GitHubIssuesChunker(Chunker):
 
         chunks.append(issue_body_chunk)
 
-        for comment_idx, comment in enumerate(issue.comments):
+        for comment_idx, comment in tqdm(enumerate(issue.comments)):
             # This is just approximate, because when we actually add a comment to the chunk there might be some extra
             # tokens, like a "Comment:" prefix.
             approx_comment_size = len(tokenizer.encode(comment.body, disallowed_special=())) + 20  # 20 for buffer

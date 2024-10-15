@@ -23,6 +23,7 @@ import configargparse
 
 import sage.config
 from sage.retriever import build_retriever_from_args
+from tqdm import tqdm, trange
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -51,7 +52,7 @@ def main():
         benchmark = [row for row in benchmark]
 
     outputs = []
-    for question_idx, item in enumerate(benchmark):
+    for question_idx, item in tqdm(enumerate(benchmark)):
         print(f"Processing question {question_idx}...")
 
         retrieved = retriever.invoke(item["question"])

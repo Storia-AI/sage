@@ -8,6 +8,7 @@ from typing import Any, Dict, Generator, Tuple
 
 import requests
 from git import GitCommandError, Repo
+from tqdm import tqdm, trange
 
 
 class DataManager:
@@ -130,7 +131,7 @@ class GitHubRepoManager(DataManager):
             lines = f.readlines()
 
         parsed_data = {"ext": [], "file": [], "dir": []}
-        for line in lines:
+        for line in tqdm(lines):
             if line.startswith("#"):
                 # This is a comment line.
                 continue
@@ -149,7 +150,7 @@ class GitHubRepoManager(DataManager):
             return False
 
         # Exclude hidden files and directories.
-        if any(part.startswith(".") for part in file_path.split(os.path.sep)):
+        if any(part.startswith(".") for part in tqdm(file_path.split(os.path.sep))):
             return False
 
         if not self.inclusions and not self.exclusions:
@@ -165,13 +166,13 @@ class GitHubRepoManager(DataManager):
             return (
                 extension in self.inclusions.get("ext", [])
                 or file_name in self.inclusions.get("file", [])
-                or any(d in dirs for d in self.inclusions.get("dir", []))
+                or any(d in dirs for d in tqdm(self.inclusions.get("dir", [])))
             )
         elif self.exclusions:
             return (
                 extension not in self.exclusions.get("ext", [])
                 and file_name not in self.exclusions.get("file", [])
-                and all(d not in dirs for d in self.exclusions.get("dir", []))
+                and all(d not in dirs for d in tqdm(self.exclusions.get("dir", [])))
             )
         return True
 
@@ -193,30 +194,20 @@ class GitHubRepoManager(DataManager):
             os.remove(excluded_log_file)
             logging.info("Logging excluded files at %s", excluded_log_file)
 
-        for root, _, files in os.walk(self.local_path):
-            file_paths = [os.path.join(root, file) for file in files]
-            included_file_paths = [f for f in file_paths if self._should_include(f)]
+        for root, _, files in tqdm(os.walk(self.local_path)):
+            file_paths = [os.path.join(root, file) for file in tqdm(files)]
+            included_file_paths = [f for f in tqdm(file_paths) if self._should_include(f)]
 
             with open(included_log_file, "a") as f:
-                for path in included_file_paths:
+                for path in tqdm(included_file_paths):
                     f.write(path + "\n")
 
             excluded_file_paths = set(file_paths).difference(set(included_file_paths))
             with open(excluded_log_file, "a") as f:
-                for path in excluded_file_paths:
+                for path in tqdm(excluded_file_paths):
                     f.write(path + "\n")
 
-            for file_path in included_file_paths:
-                relative_file_path = file_path[len(self.local_dir) + 1 :]
-                metadata = {
-                    "file_path": relative_file_path,
-                    "url": self.url_for_file(relative_file_path),
-                }
-
-                if not get_content:
-                    yield metadata
-                    continue
-
+            for file_path in tqdm(included_file_paths):
                 with open(file_path, "r") as f:
                     try:
                         contents = f.read()

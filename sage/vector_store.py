@@ -5,6 +5,7 @@ import os
 from abc import ABC, abstractmethod
 from functools import cached_property
 from typing import Dict, Generator, List, Optional, Tuple
+from tqdm import tqdm, trange
 
 import marqo
 import nltk
@@ -45,7 +46,7 @@ class VectorStore(ABC):
     def upsert(self, vectors: Generator[Vector, None, None], namespace: str):
         """Upserts in batches of 100, since vector stores have a limit on upsert size."""
         batch = []
-        for metadata, embedding in vectors:
+        for metadata, embedding in tqdm(vectors):
             batch.append((metadata, embedding))
             if len(batch) == 100:
                 self.upsert_batch(batch, namespace)
@@ -104,7 +105,7 @@ class PineconeVectorStore(VectorStore):
 
         def patched_query(*args, **kwargs):
             result = original_query(*args, **kwargs)
-            for res in result["matches"]:
+            for res in tqdm(result["matches"]):
                 if TEXT_FIELD in res["metadata"]:
                     res["metadata"]["context"] = res["metadata"][TEXT_FIELD]
             return result
@@ -124,7 +125,7 @@ class PineconeVectorStore(VectorStore):
 
     def upsert_batch(self, vectors: List[Vector], namespace: str):
         pinecone_vectors = []
-        for i, (metadata, embedding) in enumerate(vectors):
+        for i, (metadata, embedding) in tqdm(enumerate(vectors)):
             vector = {"id": metadata.get("id", str(i)), "values": embedding, "metadata": metadata}
             if self.bm25_encoder:
                 vector["sparse_values"] = self.bm25_encoder.encode_documents(metadata[TEXT_FIELD])
@@ -172,7 +173,7 @@ class MarqoVectorStore(VectorStore):
         # the result, and instead take the "filename" directly from the result.
         def patched_method(self, results):
             documents: List[Document] = []
-            for result in results["hits"]:
+            for result in tqdm(results["hits"]):
                 content = result.pop(TEXT_FIELD)
                 documents.append(Document(page_content=content, metadata=result))
             return documents

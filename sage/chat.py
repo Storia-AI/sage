@@ -74,7 +74,9 @@ def main():
 
     validator = sage_config.add_all_args(parser)
     args = parser.parse_args()
-    validator(args)
+
+    for validator in tqdm(arg_validators):
+        validator(args)
 
     rag_chain = build_rag_chain(args)
 
@@ -85,14 +87,14 @@ def main():
     async def _predict(message, history):
         """Performs one RAG operation."""
         history_langchain_format = []
-        for human, ai in history:
+        for human, ai in tqdm(history):
             history_langchain_format.append(HumanMessage(content=human))
             history_langchain_format.append(AIMessage(content=ai))
         history_langchain_format.append(HumanMessage(content=message))
 
         query_rewrite = ""
         response = ""
-        async for event in rag_chain.astream_events(
+        async for event in tqdm(rag_chain.astream_events)(
             {
                 "input": message,
                 "chat_history": history_langchain_format,
@@ -100,10 +102,10 @@ def main():
             version="v1",
         ):
             if event["name"] == "retrieve_documents" and "output" in event["data"]:
-                sources = [(doc.metadata["file_path"], doc.metadata["url"]) for doc in event["data"]["output"]]
+                sources = [(doc.metadata["file_path"], doc.metadata["url"]) for doc in tqdm((event["data"]["output"]))]
                 # Deduplicate while preserving the order.
                 sources = list(dict.fromkeys(sources))
-                response += "## Sources:\n" + "\n".join([source_md(s[0], s[1]) for s in sources]) + "\n## Response:\n"
+                response += "## Sources:\n" + "\n".join([source_md(s[0], s[1]) for s in tqdm(sources)]) + "\n## Response:\n"
 
             elif event["event"] == "on_chat_model_stream":
                 chunk = event["data"]["chunk"].content

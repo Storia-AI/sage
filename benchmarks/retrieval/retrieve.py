@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import time
+from tqdm import tqdm, trange
 
 import configargparse
 from dotenv import load_dotenv
@@ -57,12 +58,12 @@ def main():
     golden_docs = []  # List of ir_measures.Qrel objects
     retrieved_docs = []  # List of ir_measures.ScoredDoc objects
 
-    for question_idx, item in enumerate(benchmark):
+    for question_idx, item in tqdm(enumerate(benchmark)):
         print(f"Processing question {question_idx}...")
 
         query_id = str(question_idx)  # Solely needed for ir_measures library.
 
-        for golden_filepath in item[args.gold_field]:
+        for golden_filepath in tqdm(item[args.gold_field]):
             # All the file paths in the golden answer are equally relevant for the query (i.e. the order is irrelevant),
             # so we set relevance=1 for all of them.
             golden_docs.append(Qrel(query_id=query_id, doc_id=golden_filepath, relevance=1))
@@ -70,7 +71,7 @@ def main():
         # Make a retrieval call for the current question.
         retrieved = retriever.invoke(item[args.question_field])
         item["retrieved"] = []
-        for doc_idx, doc in enumerate(retrieved):
+        for doc_idx, doc in tqdm(enumerate(retrieved)):
             # The absolute value of the scores below does not affect the metrics; it merely determines the ranking of
             # the retrieved documents. The key of the score varies depending on the underlying retriever. If there's no
             # score, we use 1/(doc_idx+1) since it preserves the order of the documents.
@@ -99,7 +100,7 @@ def main():
         with open(output_file, "w") as f:
             json.dump(out_data, f, indent=4)
 
-    for key in sorted(results.keys()):
+    for key in tqdm(sorted(results.keys())):
         print(f"{key}: {results[key]}")
     print(f"Predictions and metrics saved to {output_file}")
 

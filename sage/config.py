@@ -10,6 +10,7 @@ import pkg_resources
 from configargparse import ArgumentParser
 
 from sage.reranker import RerankerProvider
+from tqdm import tqdm, trange
 
 # Limits defined here: https://ai.google.dev/gemini-api/docs/models/gemini
 GEMINI_MAX_TOKENS_PER_CHUNK = 2048

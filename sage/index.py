@@ -12,6 +12,7 @@ from sage.data_manager import GitHubRepoManager
 from sage.embedder import build_batch_embedder_from_flags
 from sage.github import GitHubIssuesChunker, GitHubIssuesManager
 from sage.vector_store import build_vector_store_from_args
+from tqdm import tqdm, trange
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -33,7 +34,7 @@ def main():
 
     args = parser.parse_args()
 
-    for validator in arg_validators:
+    for validator in tqdm(arg_validators):
         validator(args)
 
     if args.llm_retriever:
