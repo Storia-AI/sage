@@ -72,3 +72,36 @@ function merge(left: number[], right: number[]): number[] {
 let arr2 = [38, 27, 43, 3, 9, 82, 10];
 console.log("Sorted array:", mergeSort(arr2));
 
+function quickSort(arr: number[]): number[] {
+    // Base case: arrays with 0 or 1 element are already sorted
+    if (arr.length <= 1) {
+        return arr;
+    }
+
+    // Choose a pivot element from the array
+    const pivot = arr[arr.length - 1];
+
+    // Arrays to hold elements less than, equal to, and greater than the pivot
+    const left: number[] = [];
+    const right: number[] = [];
+    const equal: number[] = [];
+
+    // Partition the array into left (less than pivot), equal (equal to pivot), and right (greater than pivot)
+    for (let num of arr) {
+        if (num < pivot) {
+            left.push(num);
+        } else if (num > pivot) {
+            right.push(num);
+        } else {
+            equal.push(num);
+        }
+    }
+
+    // Recursively sort left and right, then concatenate the result
+    return [...quickSort(left), ...equal, ...quickSort(right)];
+}
+
+// Example usage
+let arr3 = [29, 10, 14, 37, 13];
+console.log("Sorted array:", quickSort(arr3));
+
