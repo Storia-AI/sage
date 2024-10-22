@@ -58,8 +58,8 @@ def add_config_args(parser: ArgumentParser):
     parser.add(
         "--mode",
         choices=["local", "remote"],
-        default="local",
-        help="Whether to use local-only resources or call third-party providers.",
+        default="remote",
+        help="Whether to use local-only resources or call third-party providers (remote).",
     )
     parser.add(
         "--config",
