@@ -28,7 +28,7 @@ jobs:
 
     - name: Run isort and check for unformatted files
       run: |
-        isort --check-only .
+        isort --check-only --profile=black .
 
     - name: Run black and check for unformatted files
       run: |
@@ -36,6 +36,6 @@ jobs:
 
     - name: Fail if formatting is incorrect
       run: |
-        echo "Code is not formatted correctly. Please run 'isort .' and 'black --line-length=120 .' locally to fix."
+        echo "Code is not formatted correctly. Please run 'isort --profile=black .' and 'black --line-length=120 .' locally to fix."
         exit 1
       if: failure()
