@@ -1,17 +1,15 @@
+llm-retriever: true
+llm-provider: anthropic
+reranker-provider: anthropic
+
+# The settings below (embeddings and vector store) are only relevant when setting --no-llm-retriever
+
 # Embeddings
 embedding-provider: openai
 embedding-model: text-embedding-3-small
 tokens-per-chunk: 800
 chunks-per-batch: 2000
-
 # Vector store
 vector-store-provider: pinecone
 pinecone-index-name: sage
 hybrid-retrieval: true
-
-# LLM
-llm-provider: openai
-llm-model: gpt-4o
-
-# Reranking
-reranker-provider: nvidia
