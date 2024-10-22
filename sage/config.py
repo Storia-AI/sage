@@ -1,12 +1,12 @@
 """Utility methods to define and validate flags."""
 
 import argparse
+import importlib.resources as resources
 import logging
 import os
 import re
 from typing import Callable
 
-import pkg_resources
 from configargparse import ArgumentParser
 
 from sage.reranker import RerankerProvider
@@ -67,8 +67,8 @@ def add_config_args(parser: ArgumentParser):
         help="Path to .yaml configuration file.",
     )
     args, _ = parser.parse_known_args()
-    config_file = pkg_resources.resource_filename(__name__, f"configs/{args.mode}.yaml")
-    parser.set_defaults(config=config_file)
+    config_file = resources.files("sage").joinpath(f"configs/{args.mode}.yaml")
+    parser.set_defaults(config=str(config_file))
     return lambda _: True
 
 
@@ -411,7 +411,7 @@ def validate_indexing_args(args):
     if args.include and args.exclude:
         raise ValueError("At most one of indexing.include and indexing.exclude can be specified.")
     if not args.include and not args.exclude:
-        args.exclude = pkg_resources.resource_filename(__name__, "sample-exclude.txt")
+        args.exclude = str(resources.files("sage").joinpath("sample-exclude.txt"))
     if args.include and not os.path.exists(args.include):
         raise ValueError(f"Path --include={args.include} does not exist.")
     if args.exclude and not os.path.exists(args.exclude):
