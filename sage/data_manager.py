@@ -159,7 +159,7 @@ class GitHubRepoManager(DataManager):
         _, extension = os.path.splitext(file_path)
         extension = extension.lower()
         file_name = os.path.basename(file_path)
-        dirs = os.path.dirname(file_path).split("/")
+        dirs = os.path.dirname(file_path).split(os.sep)
 
         if self.inclusions:
             return (
