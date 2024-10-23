@@ -69,7 +69,7 @@ class LLMReranker(BaseDocumentCompressor):
         docs_str = "\n".join(doc_texts)
 
         llm_input = self.prompt.format(query=query, documents=docs_str)
-        result = self.llm.predict(llm_input)
+        result = self.llm.invoke(llm_input)
 
         try:
             ranked_indices = [int(idx) - 1 for idx in result.strip().split(",")][: self.top_k]
@@ -107,5 +107,5 @@ def build_reranker(provider: str, model: Optional[str] = None, top_k: Optional[i
         return VoyageAIRerank(model=model, api_key=os.environ.get("VOYAGE_API_KEY"), top_k=top_k)
     if provider == RerankerProvider.ANTHROPIC.value:
         llm = build_llm_via_langchain("anthropic", model)
-        return LLMReranker(llm=llm, top_k=1)
+        return LLMReranker(llm=llm, top_k=top_k)
     raise ValueError(f"Invalid reranker provider: {provider}")
