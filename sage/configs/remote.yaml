@@ -1,6 +1,6 @@
 llm-retriever: true
 llm-provider: anthropic
-reranker-provider: anthropic
+reranker-provider: none
 
 # The settings below (embeddings and vector store) are only relevant when setting --no-llm-retriever
 
