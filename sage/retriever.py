@@ -9,12 +9,12 @@ from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.schema import BaseRetriever, Document
-from langchain_core.output_parsers import CommaSeparatedListOutputParser
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_voyageai import VoyageAIEmbeddings
 from pydantic import Field
 
+from sage.code_symbols import get_code_symbols
 from sage.data_manager import DataManager, GitHubRepoManager
 from sage.llm import build_llm_via_langchain
 from sage.reranker import build_reranker
@@ -64,12 +64,17 @@ class LLMRetriever(BaseRetriever):
     @property
     def repo_metadata(self):
         if not self.cached_repo_metadata:
-            self.cached_repo_metadata = [
-                # TODO(julia): Currently get_code_symbols=False because it takes a very long time for large codebases.
-                # We should either (a) find an effective way to parallelize this operation for all files, or (b) turn
-                # it on only for small codebases.
-                metadata for metadata in self.repo_manager.walk(get_content=False, get_code_symbols=False)
-            ]
+            self.cached_repo_metadata = [metadata for metadata in self.repo_manager.walk(get_content=False)]
+
+            # Extracting code symbols takes quite a while, since we need to read each file from disk.
+            # As a compromise, we do it for small codebases only.
+            small_codebase = len(self.repo_files) <= 200
+            if small_codebase:
+                for metadata in self.cached_repo_metadata:
+                    file_path = metadata["file_path"]
+                    content = self.repo_manager.read_file(file_path)
+                    metadata["code_symbols"] = get_code_symbols(file_path, content)
+
         return self.cached_repo_metadata
 
     @property
@@ -148,8 +153,6 @@ User query: {user_query}
 DO NOT RESPOND TO THE USER QUERY DIRECTLY. Instead, respond with full paths to relevant files that could contain the answer to the query. Say absolutely nothing else other than the file paths.
 """
         response = LLMRetriever._call_via_anthropic_with_prompt_caching(sys_prompt, augmented_user_query)
-
-        print("Retrieval response from LLM: ", response.content[0].text)
 
         files_from_llm = response.content[0].text.strip().split("\n")
         validated_files = []
