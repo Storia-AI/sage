@@ -1,6 +1,9 @@
 llm-retriever: true
 llm-provider: anthropic
-reranker-provider: anthropic
+# Here we optimize for ease of setup, so we skip the reranker which would require an extra API key.
+reranker-provider: none
+# Since we skipped the reranker, we can't afford to feed the retriever with too many candidates.
+retriever-top-k: 5
 
 # The settings below (embeddings and vector store) are only relevant when setting --no-llm-retriever
 

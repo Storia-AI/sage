@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import anthropic
 import Levenshtein
@@ -9,12 +9,12 @@ from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.schema import BaseRetriever, Document
-from langchain_core.output_parsers import CommaSeparatedListOutputParser
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_voyageai import VoyageAIEmbeddings
 from pydantic import Field
 
+from sage.code_symbols import get_code_symbols
 from sage.data_manager import DataManager, GitHubRepoManager
 from sage.llm import build_llm_via_langchain
 from sage.reranker import build_reranker
@@ -23,6 +23,9 @@ from sage.vector_store import build_vector_store_from_args
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+CLAUDE_MODEL = "claude-3-5-sonnet-20240620"
+CLAUDE_MODEL_CONTEXT_SIZE = 200_000
 
 
 class LLMRetriever(BaseRetriever):
@@ -37,20 +40,75 @@ class LLMRetriever(BaseRetriever):
 
     repo_manager: GitHubRepoManager = Field(...)
     top_k: int = Field(...)
-    all_repo_files: List[str] = Field(...)
-    repo_hierarchy: str = Field(...)
+
+    cached_repo_metadata: List[Dict] = Field(...)
+    cached_repo_files: List[str] = Field(...)
+    cached_repo_hierarchy: str = Field(...)
 
     def __init__(self, repo_manager: GitHubRepoManager, top_k: int):
         super().__init__()
         self.repo_manager = repo_manager
         self.top_k = top_k
 
-        # Best practice would be to make these fields @cached_property, but that impedes class serialization.
-        self.all_repo_files = [metadata["file_path"] for metadata in self.repo_manager.walk(get_content=False)]
-        self.repo_hierarchy = LLMRetriever._render_file_hierarchy(self.all_repo_files)
+        # We cached these fields manually because:
+        # 1. Pydantic doesn't work with functools's @cached_property.
+        # 2. We can't use Pydantic's @computed_field because these fields depend on each other.
+        # 3. We can't use functools's @lru_cache because LLMRetriever needs to be hashable.
+        self.cached_repo_metadata = None
+        self.cached_repo_files = None
+        self.cached_repo_hierarchy = None
 
         if not os.environ.get("ANTHROPIC_API_KEY"):
             raise ValueError("Please set the ANTHROPIC_API_KEY environment variable for the LLMRetriever.")
+
+    @property
+    def repo_metadata(self):
+        if not self.cached_repo_metadata:
+            self.cached_repo_metadata = [metadata for metadata in self.repo_manager.walk(get_content=False)]
+
+            # Extracting code symbols takes quite a while, since we need to read each file from disk.
+            # As a compromise, we do it for small codebases only.
+            small_codebase = len(self.repo_files) <= 200
+            if small_codebase:
+                for metadata in self.cached_repo_metadata:
+                    file_path = metadata["file_path"]
+                    content = self.repo_manager.read_file(file_path)
+                    metadata["code_symbols"] = get_code_symbols(file_path, content)
+
+        return self.cached_repo_metadata
+
+    @property
+    def repo_files(self):
+        if not self.cached_repo_files:
+            self.cached_repo_files = set(metadata["file_path"] for metadata in self.repo_metadata)
+        return self.cached_repo_files
+
+    @property
+    def repo_hierarchy(self):
+        """Produces a string that describes the structure of the repository. Depending on how big the codebase is, it
+        might include class and method names."""
+        if self.cached_repo_hierarchy is None:
+            render = LLMRetriever._render_file_hierarchy(self.repo_metadata, include_classes=True, include_methods=True)
+            max_tokens = CLAUDE_MODEL_CONTEXT_SIZE - 50_000  # 50,000 tokens for other parts of the prompt.
+            client = anthropic.Anthropic()
+            if client.count_tokens(render) > max_tokens:
+                logging.info("File hierarchy is too large; excluding methods.")
+                render = LLMRetriever._render_file_hierarchy(
+                    self.repo_metadata, include_classes=True, include_methods=False
+                )
+                if client.count_tokens(render) > max_tokens:
+                    logging.info("File hierarchy is still too large; excluding classes.")
+                    render = LLMRetriever._render_file_hierarchy(
+                        self.repo_metadata, include_classes=False, include_methods=False
+                    )
+                    if client.count_tokens(render) > max_tokens:
+                        logging.info("File hierarchy is still too large; truncating.")
+                        tokenizer = anthropic.Tokenizer()
+                        tokens = tokenizer.tokenize(render)[:max_tokens]
+                        render = tokenizer.detokenize(tokens)
+            logging.info("Number of tokens in render hierarchy: %d", client.count_tokens(render))
+            self.cached_repo_hierarchy = render
+        return self.cached_repo_hierarchy
 
     def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> List[Document]:
         """Retrieve relevant documents for a given query."""
@@ -66,13 +124,26 @@ class LLMRetriever(BaseRetriever):
 
     def _ask_llm_to_retrieve(self, user_query: str, top_k: int) -> List[str]:
         """Feeds the file hierarchy and user query to the LLM and asks which files might be relevant."""
+        repo_hierarchy = str(self.repo_hierarchy)
         sys_prompt = f"""
-You are a retriever system. You will be given a user query and a list of files in a GitHub repository. Your task is to determine the top {top_k} files that are most relevant to the user query.
+You are a retriever system. You will be given a user query and a list of files in a GitHub repository, together with the class names in each file.
+
+For instance:
+folder1
+    folder2
+        folder3
+            file123.py
+                ClassName1
+                ClassName2
+                ClassName3
+means that there is a file with path folder1/folder2/folder3/file123.py, which contains classes ClassName1, ClassName2, and ClassName3.
+
+Your task is to determine the top {top_k} files that are most relevant to the user query.
 DO NOT RESPOND TO THE USER QUERY DIRECTLY. Instead, respond with full paths to relevant files that could contain the answer to the query. Say absolutely nothing else other than the file paths.
 
-Here is the file hierarchy of the GitHub repository:
+Here is the file hierarchy of the GitHub repository, together with the class names in each file:
 
-{self.repo_hierarchy}
+{repo_hierarchy}
 """
 
         # We are deliberately repeating the "DO NOT RESPOND TO THE USER QUERY DIRECTLY" instruction here.
@@ -82,20 +153,21 @@ User query: {user_query}
 DO NOT RESPOND TO THE USER QUERY DIRECTLY. Instead, respond with full paths to relevant files that could contain the answer to the query. Say absolutely nothing else other than the file paths.
 """
         response = LLMRetriever._call_via_anthropic_with_prompt_caching(sys_prompt, augmented_user_query)
+
         files_from_llm = response.content[0].text.strip().split("\n")
         validated_files = []
 
         for filename in files_from_llm:
-            if filename not in self.all_repo_files:
+            if filename not in self.repo_files:
                 if "/" not in filename:
                     # This is most likely some natural language excuse from the LLM; skip it.
                     continue
                 # Try a few heuristics to fix the filename.
                 filename = LLMRetriever._fix_filename(filename, self.repo_manager.repo_id)
-                if filename not in self.all_repo_files:
+                if filename not in self.repo_files:
                     # The heuristics failed; try to find the closest filename in the repo.
-                    filename = LLMRetriever._find_closest_filename(filename, self.all_repo_files)
-            if filename in self.all_repo_files:
+                    filename = LLMRetriever._find_closest_filename(filename, self.repo_files)
+            if filename in self.repo_files:
                 validated_files.append(filename)
         return validated_files
 
@@ -108,13 +180,10 @@ DO NOT RESPOND TO THE USER QUERY DIRECTLY. Instead, respond with full paths to r
         We're circumventing LangChain for now, because the feature is < 1 week old at the time of writing and has no
         documentation: https://github.com/langchain-ai/langchain/pull/27087
         """
-        CLAUDE_MODEL = "claude-3-5-sonnet-20240620"
-        client = anthropic.Anthropic()
-
         system_message = {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}
         user_message = {"role": "user", "content": user_prompt}
 
-        response = client.beta.prompt_caching.messages.create(
+        response = anthropic.Anthropic().beta.prompt_caching.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=1024,  # The maximum number of *output* tokens to generate.
             system=[system_message],
@@ -126,34 +195,66 @@ DO NOT RESPOND TO THE USER QUERY DIRECTLY. Instead, respond with full paths to r
         return response
 
     @staticmethod
-    def _render_file_hierarchy(file_paths: List[str]) -> str:
-        """Given a list of files, produces a visualization of the file hierarchy. For instance:
+    def _render_file_hierarchy(
+        repo_metadata: List[Dict], include_classes: bool = True, include_methods: bool = True
+    ) -> str:
+        """Given a list of files, produces a visualization of the file hierarchy. This hierarchy optionally includes
+        class and method names, if available.
+
+        For large codebases, including both classes and methods might exceed the token limit of the LLM. In that case,
+        try setting `include_methods=False` first. If that's still too long, try also setting `include_classes=False`.
+
+        As a point of reference, the Transformers library requires setting `include_methods=False` to fit within
+        Claude's 200k context.
+
+        Example:
         folder1
             folder11
-                file111.py
+                file111.md
                 file112.py
+                    ClassName1
+                        method_name1
+                        method_name2
+                        method_name3
             folder12
                 file121.py
+                    ClassName2
+                    ClassName3
         folder2
             file21.py
         """
         # The "nodepath" is the path from root to the node (e.g. huggingface/transformers/examples)
         nodepath_to_node = {}
 
-        for path in file_paths:
-            items = path.split("/")
-            nodepath = ""
-            parent_node = None
-            for item in items:
-                nodepath = f"{nodepath}/{item}"
-                if nodepath in nodepath_to_node:
-                    node = nodepath_to_node[nodepath]
-                else:
-                    node = Node(item, parent=parent_node)
-                    nodepath_to_node[nodepath] = node
-                parent_node = node
+        for metadata in repo_metadata:
+            path = metadata["file_path"]
+            paths = [path]
 
-        root_path = f"/{file_paths[0].split('/')[0]}"
+            if include_classes or include_methods:
+                # Add the code symbols to the path. For instance, "folder/myfile.py/ClassName/method_name".
+                for class_name, method_name in metadata.get("code_symbols", []):
+                    if include_classes and class_name:
+                        paths.append(path + "/" + class_name)
+                    # We exclude private methods to save tokens.
+                    if include_methods and method_name and not method_name.startswith("_"):
+                        paths.append(
+                            path + "/" + class_name + "/" + method_name if class_name else path + "/" + method_name
+                        )
+
+            for path in paths:
+                items = path.split("/")
+                nodepath = ""
+                parent_node = None
+                for item in items:
+                    nodepath = f"{nodepath}/{item}"
+                    if nodepath in nodepath_to_node:
+                        node = nodepath_to_node[nodepath]
+                    else:
+                        node = Node(item, parent=parent_node)
+                        nodepath_to_node[nodepath] = node
+                    parent_node = node
+
+        root_path = "/" + repo_metadata[0]["file_path"].split("/")[0]
         full_render = ""
         root_node = nodepath_to_node[root_path]
         for pre, fill, node in RenderTree(root_node):
@@ -198,6 +299,24 @@ DO NOT RESPOND TO THE USER QUERY DIRECTLY. Instead, respond with full paths to r
             closest_path = distances[0][0]
             return closest_path
         return None
+
+
+class RerankerWithErrorHandling(BaseRetriever):
+    """Wraps a `ContextualCompressionRetriever` to catch errors during inference.
+
+    In practice, we see occasional `requests.exceptions.ReadTimeout` from the NVIDIA reranker, which crash the entire
+    pipeline. This wrapper catches such exceptions by simply returning the documents in the original order.
+    """
+
+    def __init__(self, reranker: ContextualCompressionRetriever):
+        self.reranker = reranker
+
+    def _get_relevant_documents(self, query: str, *, run_manager=None) -> List[Document]:
+        try:
+            return self.reranker._get_relevant_documents(query, run_manager=run_manager)
+        except Exception as e:
+            logging.error(f"Error in reranker; preserving original document order from retriever. {e}")
+            return self.reranker.base_retriever._get_relevant_documents(query, run_manager=run_manager)
 
 
 def build_retriever_from_args(args, data_manager: Optional[DataManager] = None):

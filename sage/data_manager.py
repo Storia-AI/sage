@@ -217,12 +217,8 @@ class GitHubRepoManager(DataManager):
                     yield metadata
                     continue
 
-                with open(file_path, "r") as f:
-                    try:
-                        contents = f.read()
-                    except UnicodeDecodeError:
-                        logging.warning("Unable to decode file %s. Skipping.", file_path)
-                        continue
+                contents = self.read_file(relative_file_path)
+                if contents:
                     yield contents, metadata
 
     def url_for_file(self, file_path: str) -> str:
@@ -231,10 +227,15 @@ class GitHubRepoManager(DataManager):
         return f"https://github.com/{self.repo_id}/blob/{self.default_branch}/{file_path}"
 
     def read_file(self, relative_file_path: str) -> str:
-        """Reads the content of the file at the given path."""
-        file_path = os.path.join(self.local_dir, relative_file_path)
-        with open(file_path, "r") as f:
-            return f.read()
+        """Reads the contents of a file in the repository."""
+        absolute_file_path = os.path.join(self.local_dir, relative_file_path)
+        with open(absolute_file_path, "r") as f:
+            try:
+                contents = f.read()
+                return contents
+            except UnicodeDecodeError:
+                logging.warning("Unable to decode file %s.", absolute_file_path)
+                return None
 
     def from_args(args: Dict):
         """Creates a GitHubRepoManager from command-line arguments and clones the underlying repository."""
