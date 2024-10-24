@@ -6,6 +6,7 @@ Make sure to `pip install ir_measures` before running this script.
 import json
 import logging
 import os
+import pprint
 import time
 
 import configargparse
@@ -71,13 +72,18 @@ def main():
         retrieved = retriever.invoke(item[args.question_field])
         item["retrieved"] = []
         for doc_idx, doc in enumerate(retrieved):
+            pprint.pprint(doc)
             # The absolute value of the scores below does not affect the metrics; it merely determines the ranking of
             # the retrieved documents. The key of the score varies depending on the underlying retriever. If there's no
             # score, we use 1/(doc_idx+1) since it preserves the order of the documents.
             score = doc.metadata.get("score", doc.metadata.get("relevance_score", 1 / (doc_idx + 1)))
             retrieved_docs.append(ScoredDoc(query_id=query_id, doc_id=doc.metadata["file_path"], score=score))
             # Update the output dictionary with the retrieved documents.
-            item["retrieved"].append({"file_path": doc.metadata["file_path"], "score": score})
+            item["retrieved"].append({"file_path": doc.metadata["file_path"],
+                                      "score": score,
+                                      "page_content": doc.page_content,
+                                      "start_byte": doc.metadata.get("start_byte", None),
+                                      "end_byte": doc.metadata.get("end_byte", None)})
 
         if "answer" in item:
             item.pop("answer")  # Makes the output file harder to read.
