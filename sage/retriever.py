@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-CLAUDE_MODEL = "claude-3-5-sonnet-20240620"
+CLAUDE_MODEL = "claude-3-5-sonnet-20241022"
 CLAUDE_MODEL_CONTEXT_SIZE = 200_000
 
 
