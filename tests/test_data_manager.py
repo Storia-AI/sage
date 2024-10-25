@@ -17,9 +17,49 @@ Here, one can find a set of unit tests for GitHubRepoManager class from sage.dat
 import os
 import unittest
 from unittest.mock import MagicMock, patch
+from urllib.parse import quote
 
-from sage.data_manager import GitHubRepoManager
+from sage.data_manager import GitHubRepoManager, GitLabRepoManager
 
+class TestGitLabRepoManager(unittest.TestCase):
+    @patch("git.Repo.clone_from")
+    def test_download_clone_success(self, mock_clone):
+        """Test the download() method of GitHubRepoManager by mocking the cloning process."""
+        repo_manager = GitLabRepoManager(repo_id="gitlab-org/gitlab-runner", local_dir="/tmp/test_repo")
+        mock_clone.return_value = MagicMock()
+        result = repo_manager.download()
+        mock_clone.assert_called_once_with("https://gitlab.com/gitlab-org/gitlab-runner.git", "/tmp/test_repo/gitlab-org/gitlab-runner", depth=1, single_branch=True)
+        self.assertTrue(result)
+
+
+    @patch("sage.data_manager.requests.get")
+    def test_is_public_repository(self, mock_get):
+        """Test the is_public property to check if a repository is public."""
+        mock_get.return_value.status_code = 200
+        repo_id="gitlab-org/gitlab-runner"
+        repo_manager = GitLabRepoManager(repo_id=repo_id)
+        self.assertTrue(repo_manager.is_public)
+        repo_id = quote(repo_id, safe="")
+        mock_get.assert_called_once_with(f"https://gitlab.com/api/v4/projects/{repo_id}", timeout=10)
+
+    @patch("sage.data_manager.requests.get")
+    def test_is_private_repository(self, mock_get):
+        """Test the is_public property to check if a repository is private."""
+        mock_get.return_value.status_code = 404
+        repo_id="gitlab-org/gitlab-runner"
+        repo_manager = GitLabRepoManager(repo_id=repo_id)
+        print(repo_manager.is_public)
+        self.assertFalse(repo_manager.is_public)
+        repo_id = quote(repo_id, safe="")
+        mock_get.assert_called_once_with(f"https://gitlab.com/api/v4/projects/{repo_id}", timeout=10)
+
+    @patch("builtins.open", new_callable=unittest.mock.mock_open, read_data="ext:.py\nfile:test.py\ndir:test_dir\n")
+    def test_parse_filter_file(self, mock_file):
+        """Test the _parse_filter_file method for correct parsing of inclusion/exclusion files."""
+        repo_manager = GitLabRepoManager(repo_id="gitlab-org/gitlab-runner", inclusion_file="dummy_path")
+        expected = {"ext": [".py"], "file": ["test.py"], "dir": ["test_dir"]}
+        result = repo_manager._parse_filter_file("dummy_path")
+        self.assertEqual(result, expected)
 
 class TestGitHubRepoManager(unittest.TestCase):
     @patch("git.Repo.clone_from")
