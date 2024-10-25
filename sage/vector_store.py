@@ -149,7 +149,9 @@ class PineconeVectorStore(VectorStore):
         retrievers = [bm25_retriever, dense_retriever] if bm25_retriever else [dense_retriever]
         if len(retrievers) == 1:
             return retrievers[0]
-        return EnsembleRetriever(retrievers=retrievers, weights=[1.0 / len(retrievers)] * len(retrievers))
+        
+        weights = [1 - self.alpha, self.alpha] if bm25_retriever else [1.0]
+        return EnsembleRetriever(retrievers=retrievers, weights=weights)
 
 
 
