@@ -8,8 +8,8 @@ from typing import Dict, Generator, List, Optional, Tuple
 
 import marqo
 import nltk
-from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import Marqo
 from langchain_community.vectorstores import Pinecone as LangChainPinecone
 from langchain_core.documents import Document
@@ -134,23 +134,26 @@ class PineconeVectorStore(VectorStore):
         self.index.upsert(vectors=pinecone_vectors, namespace=namespace)
 
     def as_retriever(self, top_k: int, embeddings: Embeddings, namespace: str):
-        bm25_retriever = BM25Retriever(
-            embeddings=embeddings,
-            sparse_encoder=self.bm25_encoder,
-            index=self.index,
-            namespace=namespace,
-            top_k=top_k,
-        ) if self.bm25_encoder else None
+        bm25_retriever = (
+            BM25Retriever(
+                embeddings=embeddings,
+                sparse_encoder=self.bm25_encoder,
+                index=self.index,
+                namespace=namespace,
+                top_k=top_k,
+            )
+            if self.bm25_encoder
+            else None
+        )
 
         dense_retriever = LangChainPinecone.from_existing_index(
             index_name=self.index_name, embedding=embeddings, namespace=namespace
         ).as_retriever(search_kwargs={"k": top_k})
-        
+
         if bm25_retriever:
-            return EnsembleRetriever(retrievers=[dense_retriever, bm25_retriever], weights=[self.alpha, 1-self.alpha])
+            return EnsembleRetriever(retrievers=[dense_retriever, bm25_retriever], weights=[self.alpha, 1 - self.alpha])
         else:
             return dense_retriever
-
 
 
 class MarqoVectorStore(VectorStore):

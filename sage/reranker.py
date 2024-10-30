@@ -28,14 +28,14 @@ def build_reranker(provider: str, model: Optional[str] = None, top_k: int = 5) -
         RerankerProvider.COHERE.value: "COHERE_API_KEY",
         RerankerProvider.NVIDIA.value: "NVIDIA_API_KEY",
         RerankerProvider.JINA.value: "JINA_API_KEY",
-        RerankerProvider.VOYAGE.value: "VOYAGE_API_KEY"
+        RerankerProvider.VOYAGE.value: "VOYAGE_API_KEY",
     }
 
     provider_defaults = {
         RerankerProvider.HUGGINGFACE.value: "cross-encoder/ms-marco-MiniLM-L-6-v2",
         RerankerProvider.COHERE.value: "rerank-english-v3.0",
         RerankerProvider.NVIDIA.value: "nvidia/nv-rerankqa-mistral-4b-v3",
-        RerankerProvider.VOYAGE.value: "rerank-1"
+        RerankerProvider.VOYAGE.value: "rerank-1",
     }
 
     model = model or provider_defaults.get(provider)
