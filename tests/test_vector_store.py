@@ -1,10 +1,14 @@
 import os
 from argparse import Namespace
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import patch, MagicMock
 
-from sage.vector_store import PineconeVectorStore, MarqoVectorStore, build_vector_store_from_args
+from sage.vector_store import (
+    MarqoVectorStore,
+    PineconeVectorStore,
+    build_vector_store_from_args,
+)
 
 mock_vectors = [({"id": "1", "text": "example"}, [0.1, 0.2, 0.3])]
 mock_namespace = "test_namespace"
@@ -68,7 +72,6 @@ class TestVectorStore:
         # No specific assertion as upsert_batch is a no-op
         marqo_store.upsert_batch(mock_vectors, mock_namespace)
 
-
     def build_args(self, provider, alpha=1.0):
         if provider == "pinecone":
             return Namespace(
@@ -76,19 +79,19 @@ class TestVectorStore:
                 pinecone_index_name="test_index",
                 embedding_size=128,
                 retrieval_alpha=alpha,
-                index_namespace="test_namespace"
+                index_namespace="test_namespace",
             )
         elif provider == "marqo":
             return Namespace(
-                vector_store_provider="marqo",
-                marqo_url="http://localhost:8882",
-                index_namespace="test_index"
+                vector_store_provider="marqo", marqo_url="http://localhost:8882", index_namespace="test_index"
             )
 
     def build_bm25_cache_path(self):
         return os.path.join(".bm25_cache", "test_namespace", "bm25_encoder.json")
 
-    def test_builds_pinecone_vector_store_with_default_bm25_encoder(self, pinecone_store, mock_bm25_encoder, mock_data_manager, mock_nltk):
+    def test_builds_pinecone_vector_store_with_default_bm25_encoder(
+        self, pinecone_store, mock_bm25_encoder, mock_data_manager, mock_nltk
+    ):
         args = self.build_args("pinecone", alpha=0.5)
         store = build_vector_store_from_args(args, data_manager=mock_data_manager)
         assert isinstance(store, PineconeVectorStore)
@@ -120,5 +123,5 @@ class TestVectorStore:
         with pytest.raises(ValueError, match="Unrecognized vector store type unknown"):
             build_vector_store_from_args(args)
 
-    if __name__ == '__main__':
+    if __name__ == "__main__":
         pytest.main()
