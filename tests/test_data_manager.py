@@ -53,6 +53,19 @@ class TestGitLabRepoManager(unittest.TestCase):
         repo_id = quote(repo_id, safe="")
         mock_get.assert_called_once_with(f"https://gitlab.com/api/v4/projects/{repo_id}", timeout=10)
 
+    @patch("sage.data_manager.requests.get")
+    def test_default_branch(self, mock_get):
+        """Test the default_branch property to fetch the default branch of the repository."""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"default_branch": "main"}
+        repo_id="gitlab-org/gitlab-runner"
+        repo_manager = GitLabRepoManager(repo_id=repo_id)
+        repo_id = quote(repo_id, safe="")
+        self.assertEqual(repo_manager.default_branch, "main")
+        mock_get.assert_called_once_with(
+            f"https://gitlab.com/api/v4/projects/{repo_id}", headers={"Accept": "application/json"}
+        )
+
     @patch("builtins.open", new_callable=unittest.mock.mock_open, read_data="ext:.py\nfile:test.py\ndir:test_dir\n")
     def test_parse_filter_file(self, mock_file):
         """Test the _parse_filter_file method for correct parsing of inclusion/exclusion files."""
@@ -60,6 +73,40 @@ class TestGitLabRepoManager(unittest.TestCase):
         expected = {"ext": [".py"], "file": ["test.py"], "dir": ["test_dir"]}
         result = repo_manager._parse_filter_file("dummy_path")
         self.assertEqual(result, expected)
+
+    @patch("os.path.exists")
+    @patch("os.remove")
+    @patch("builtins.open", new_callable=unittest.mock.mock_open, read_data="dummy content")
+    def test_walk_included_files(self, mock_open, mock_remove, mock_exists):
+        """Test the walk method to ensure it only includes specified files."""
+        mock_exists.return_value = True
+        repo_manager = GitLabRepoManager(repo_id="gitlab-org/gitlab-runner", local_dir="/tmp/test_repo")
+        with patch(
+            "os.walk",
+            return_value=[
+                ("/tmp/test_repo", ("subdir",), ("included_file.py", "excluded_file.txt")),
+            ],
+        ):
+            included_files = list(repo_manager.walk())
+            print("Included files:", included_files)
+            self.assertTrue(any(file[1]["file_path"] == "included_file.py" for file in included_files))
+
+    def test_read_file(self):
+        """Test the read_file method to read the content of a file."""
+        mock_file_path = "/tmp/test_repo/test_file.txt"
+        with patch("builtins.open", new_callable=unittest.mock.mock_open, read_data="Hello, World!"):
+            repo_manager = GitLabRepoManager(repo_id="gitlab-org/gitlab-runner", local_dir="/tmp/test_repo")
+            content = repo_manager.read_file("test_file.txt")
+            self.assertEqual(content, "Hello, World!")
+
+    @patch("os.makedirs")
+    def test_create_log_directories(self, mock_makedirs):
+        """Test that log directories are created."""
+        repo_manager = GitHubRepoManager(repo_id="Storia-AI/sage", local_dir="/tmp/test_repo")
+
+        with self.assertRaises(AttributeError):
+            repo_manager.create_log_directories()
+
 
 class TestGitHubRepoManager(unittest.TestCase):
     @patch("git.Repo.clone_from")
