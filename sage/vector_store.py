@@ -408,7 +408,7 @@ class QdrantVectorStore(VectorStore):
         del embeddings
         del namespace
 
-        return self.vector_store.as_retriever(search_kwards={"k": 2})
+        return self.vector_store.as_retriever(search_kwards={"k": top_k})
 
 class MarqoVectorStore(VectorStore):
     """Vector store implementation using Marqo."""
@@ -484,8 +484,6 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
             bm25_cache=bm25_cache,
         )
     elif args.vector_store_provider == 'chroma':
-        logging.info("Chroma Store is Being Built")
-        print("ChromaDB is instantiated")
         return ChromaVectorStore(
             index_name=args.chroma_index_name,
         )
