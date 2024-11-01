@@ -41,8 +41,8 @@ def main():
         return
 
     # Additionally validate embedder and vector store compatibility.
-    if args.embedding_provider == "openai" and args.vector_store_provider != "pinecone":
-        parser.error("When using OpenAI embedder, the vector store type must be Pinecone.")
+    if args.embedding_provider == "openai" and args.vector_store_provider not in ["pinecone","chroma","faiss", "milvus", "qdrant"]:
+        parser.error("When using OpenAI embedder, the vector store type must be from the list ['pinecone','chroma','faiss', 'milvus', 'qdrant'].")
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
 

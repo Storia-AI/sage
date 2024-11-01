@@ -122,12 +122,37 @@ def add_embedding_args(parser: ArgumentParser) -> Callable:
 
 def add_vector_store_args(parser: ArgumentParser) -> Callable:
     """Adds vector store-related arguments to the parser and returns a validator."""
-    parser.add("--vector-store-provider", default="marqo", choices=["pinecone", "marqo"])
+    parser.add("--vector-store-provider", default="marqo", choices=["pinecone", "marqo", "chroma", "faiss", "milvus", "qdrant"])
     parser.add(
         "--pinecone-index-name",
         default=None,
         help="Pinecone index name. Required if using Pinecone as the vector store. If the index doesn't exist already, "
         "we will create it.",
+    )
+    parser.add(
+        "--chroma-index-name",
+        default="chroma_collection",
+        help="Chroma collection name. We default it to chroma_collection",
+    )
+    parser.add(
+        "--faiss-index-name",
+        default="sage_faiss",
+        help="Faiss index name. We default it to sage_faiss",
+    )
+    parser.add(
+        "--milvus-index-name",
+        default="sage_milvus",
+        help="Milvus collection name. We default it to sage_milvus",
+    )
+    parser.add(
+        "--qdrant-index-name",
+        default="sage_qdrant",
+        help="Qdrant Colleciton name. We default it to sage_qdrant",
+    )
+    parser.add(
+        "--milvus-uri",
+        default="milvus_sage.db",
+        help="URI for milvus. We default it to milvus_sage.db",
     )
     parser.add(
         "--index-namespace",
