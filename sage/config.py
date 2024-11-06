@@ -124,30 +124,9 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
     """Adds vector store-related arguments to the parser and returns a validator."""
     parser.add("--vector-store-provider", default="marqo", choices=["pinecone", "marqo", "chroma", "faiss", "milvus", "qdrant"])
     parser.add(
-        "--pinecone-index-name",
-        default=None,
-        help="Pinecone index name. Required if using Pinecone as the vector store. If the index doesn't exist already, "
-        "we will create it.",
-    )
-    parser.add(
-        "--chroma-index-name",
-        default="chroma_collection",
-        help="Chroma collection name. We default it to chroma_collection",
-    )
-    parser.add(
-        "--faiss-index-name",
-        default="sage_faiss",
-        help="Faiss index name. We default it to sage_faiss",
-    )
-    parser.add(
-        "--milvus-index-name",
-        default="sage_milvus",
-        help="Milvus collection name. We default it to sage_milvus",
-    )
-    parser.add(
-        "--qdrant-index-name",
-        default="sage_qdrant",
-        help="Qdrant Colleciton name. We default it to sage_qdrant",
+        "--index-name",
+        default="sage_index",
+        help="Index name for the Vector Store index. We default it to sage_index"
     )
     parser.add(
         "--milvus-uri",
@@ -427,8 +406,8 @@ def validate_vector_store_args(args):
     elif args.vector_store_provider == "pinecone":
         if not os.getenv("PINECONE_API_KEY"):
             raise ValueError("Please set the PINECONE_API_KEY environment variable.")
-        if not args.pinecone_index_name:
-            raise ValueError(f"Please set the vector_store.pinecone_index_name value.")
+        if not args.index_name:
+            raise ValueError(f"Please set the vector_store.index_name value.")
 
 
 def validate_indexing_args(args):

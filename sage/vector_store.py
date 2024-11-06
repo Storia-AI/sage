@@ -1,5 +1,6 @@
 """Vector store abstraction and implementations."""
 
+from enum import Enum
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -41,6 +42,13 @@ from sage.data_manager import DataManager
 
 Vector = Tuple[Dict, List[float]]  # (metadata, embedding)
 
+class VectorStoreProvider(Enum):
+    PINECONE = "pinecone"
+    MARQO = "marqo"
+    CHROMA = "chroma"
+    FAISS = "faiss"
+    MILVUS = "milvus"
+    QDRANT = "qdrant"
 
 def is_punkt_downloaded():
     try:
@@ -452,7 +460,7 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
     of documents.
     """
     if args.embedding_provider == "openai":
-            embeddings = OpenAIEmbeddings(model=args.embedding_model)
+        embeddings = OpenAIEmbeddings(model=args.embedding_model)
     elif args.embedding_provider == "voyage":
         embeddings = VoyageAIEmbeddings(model=args.embedding_model)
     elif args.embedding_provider == "gemini":
@@ -478,30 +486,30 @@ def build_vector_store_from_args(args: dict, data_manager: Optional[DataManager]
             bm25_encoder.dump(bm25_cache)
 
         return PineconeVectorStore(
-            index_name=args.pinecone_index_name,
+            index_name=args.index_name,
             dimension=args.embedding_size if "embedding_size" in args else None,
             alpha=args.retrieval_alpha,
             bm25_cache=bm25_cache,
         )
     elif args.vector_store_provider == 'chroma':
         return ChromaVectorStore(
-            index_name=args.chroma_index_name,
+            index_name=args.index_name,
         )
     elif args.vector_store_provider == 'faiss':
         return FAISSVectorStore(
-            index_name = args.faiss_index_name,
+            index_name = args.index_name,
             dimension=args.embedding_size,
             embeddings=embeddings
         )
     elif args.vector_store_provider == 'milvus':
         return MilvusVectorStore(
             uri = args.milvus_uri,
-            index_name = args.milvus_index_name,
+            index_name = args.index_name,
             embeddings=embeddings
         )
     elif args.vector_store_provider == 'qdrant':
         return QdrantVectorStore(
-            index_name = args.qdrant_index_name,
+            index_name = args.index_name,
             dimension=args.embedding_size,
             embeddings=embeddings
         )
