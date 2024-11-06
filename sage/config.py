@@ -122,11 +122,11 @@ def add_embedding_args(parser: ArgumentParser) -> Callable:
 
 def add_vector_store_args(parser: ArgumentParser) -> Callable:
     """Adds vector store-related arguments to the parser and returns a validator."""
-    parser.add("--vector-store-provider", default="marqo", choices=["pinecone", "marqo", "chroma", "faiss", "milvus", "qdrant"])
     parser.add(
-        "--index-name",
-        default="sage_index",
-        help="Index name for the Vector Store index. We default it to sage_index"
+        "--vector-store-provider", default="marqo", choices=["pinecone", "marqo", "chroma", "faiss", "milvus", "qdrant"]
+    )
+    parser.add(
+        "--index-name", default="sage_index", help="Index name for the Vector Store index. We default it to sage_index"
     )
     parser.add(
         "--milvus-uri",

@@ -43,7 +43,9 @@ def main():
     # Additionally validate embedder and vector store compatibility.
     vector_store_providers = [member.value for member in VectorStoreProvider]
     if args.embedding_provider == "openai" and args.vector_store_provider not in vector_store_providers:
-        parser.error(f"When using OpenAI embedder, the vector store type must be from the list {vector_store_providers}.")
+        parser.error(
+            f"When using OpenAI embedder, the vector store type must be from the list {vector_store_providers}."
+        )
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
 
