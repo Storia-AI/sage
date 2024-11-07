@@ -7,7 +7,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import Counter
 from typing import Dict, Generator, List, Optional, Tuple
-
+from tqdm import tqdm
 import google.generativeai as genai
 import marqo
 import requests
@@ -52,15 +52,23 @@ class OpenAIBatchEmbedder(BatchEmbedder):
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None) -> str:
         """Issues batch embedding jobs for the entire dataset. Returns the filename containing the job IDs."""
+        total_chunks = 0
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
+            total_chunks += len(chunks)
+            
         batch = []
         batch_ids = {}  # job_id -> metadata
         chunk_count = 0
         dataset_name = self.data_manager.dataset_id.replace("/", "_")
 
+        pbar = tqdm(total=total_chunks, desc="Processing chunks", unit="chunk")
+        
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
+            pbar.update(len(chunks))
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
@@ -76,6 +84,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         if batch:
             openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
             batch_ids[openai_batch_id] = [chunk.metadata for chunk in batch]
+            
         logging.info("Issued %d jobs for %d chunks.", len(batch_ids), chunk_count)
 
         timestamp = int(time.time())
@@ -83,6 +92,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         with open(metadata_file, "w") as f:
             json.dump(batch_ids, f)
         logging.info("Job metadata saved at %s", metadata_file)
+        pbar.close()
         return metadata_file
 
     def embeddings_are_ready(self, metadata_file: str) -> bool:
@@ -219,13 +229,21 @@ class VoyageBatchEmbedder(BatchEmbedder):
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire dataset."""
+        total_chunks = 0
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
+            total_chunks += len(chunks)
+            
         batch = []
         chunk_count = 0
 
+        pbar = tqdm(total=total_chunks, desc="Processing chunks", unit="chunk")
+        
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
-            batch.extend(chunks)
+            batch.extend(chunks)    
+            pbar.update(len(chunks))
 
             token_count = chunk_count * self.chunker.max_tokens
             if token_count % 900_000 == 0:
@@ -247,7 +265,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
             result = self._make_batch_request(batch)
             for chunk, datum in zip(batch, result["data"]):
                 self.embedding_data.append((chunk.metadata, datum["embedding"]))
-
+        pbar.close()
         logging.info(f"Successfully embedded {chunk_count} chunks.")
 
     def embeddings_are_ready(self, *args, **kwargs) -> bool:
@@ -291,18 +309,26 @@ class MarqoEmbedder(BatchEmbedder):
             self.client.create_index(index_name, model=model)
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
-        """Issues batch embedding jobs for the entire dataset."""
+        """Issues batch embedding jobs for the entire dataset with progress tracking."""
         if chunks_per_batch > 64:
             raise ValueError("Marqo enforces a limit of 64 chunks per batch.")
 
+        total_chunks = 0
+        for content, metadata in self.data_manager.walk():
+            chunks = self.chunker.chunk(content, metadata)
+            total_chunks += len(chunks)
+            
         chunk_count = 0
         batch = []
         job_count = 0
+    
+        pbar = tqdm(total=total_chunks, desc="Processing chunks", unit="chunk")
 
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
+            pbar.update(len(chunks))
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
@@ -316,13 +342,15 @@ class MarqoEmbedder(BatchEmbedder):
 
                     if max_embedding_jobs and job_count >= max_embedding_jobs:
                         logging.info("Reached the maximum number of embedding jobs. Stopping.")
+                        pbar.close()
                         return
                 batch = []
 
-        # Finally, commit the last batch.
         if batch:
             self.index.add_documents(documents=[chunk.metadata for chunk in batch], tensor_fields=[TEXT_FIELD])
+        pbar.close()
         logging.info(f"Successfully embedded {chunk_count} chunks.")
+
 
     def embeddings_are_ready(self) -> bool:
         """Checks whether the batch embedding jobs are done."""
