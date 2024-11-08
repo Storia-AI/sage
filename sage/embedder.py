@@ -272,7 +272,7 @@ class VoyageBatchEmbedder(BatchEmbedder):
         for chunk_metadata, embedding in self.embedding_data:
             yield (chunk_metadata, embedding)
 
-    @retry(wait=wait_random_exponential(multiplier=1, max=60), stop=stop_after_attempt(6))
+    
     def _make_batch_request(self, chunks: List[Chunk]) -> Dict:
         """Makes a batch request to the Voyage API with exponential backoff when we hit rate limits."""
         url = "https://api.voyageai.com/v1/embeddings"

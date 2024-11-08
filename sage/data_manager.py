@@ -254,3 +254,21 @@ class GitHubRepoManager(DataManager):
                 "For private repositories, please set the GITHUB_TOKEN variable in your environment."
             )
         return repo_manager
+    
+    def from_args_localRepo(args: Dict):
+        """Creates a GitHubRepoManager from command-line arguments and clones the underlying repository."""
+        repo_manager = GitHubRepoManager(
+            repo_id=args.repo_id,
+            commit_hash=args.commit_hash,
+            access_token=os.getenv("GITHUB_TOKEN"),
+            local_dir=args.local_dir,
+            inclusion_file=args.include,
+            exclusion_file=args.exclude,
+        )
+        if not repo_manager.local_dir:
+            # Proceed if local_dir exists and is not empty
+            raise ValueError(
+                f"The given Directory is empty, please provide the correct local dir "
+            )
+       
+        return repo_manager

@@ -12,7 +12,7 @@ from sage.data_manager import GitHubRepoManager
 from sage.embedder import build_batch_embedder_from_flags
 from sage.github import GitHubIssuesChunker, GitHubIssuesManager
 from sage.vector_store import build_vector_store_from_args
-
+import pprint
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -32,29 +32,36 @@ def main():
     ]
 
     args = parser.parse_args()
-
+    
     for validator in arg_validators:
         validator(args)
 
     if args.llm_retriever:
         logging.warning("The LLM retriever does not require indexing, so this script is a no-op.")
         return
-
+    
     # Additionally validate embedder and vector store compatibility.
     if args.embedding_provider == "openai" and args.vector_store_provider != "pinecone":
         parser.error("When using OpenAI embedder, the vector store type must be Pinecone.")
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
-
+    if args.repo_mode == "local" and args.local_dir == "repos":
+        parser.error("You must not store the local repo inside the repos folder")
+        
     ######################
     # Step 1: Embeddings #
     ######################
-
+    
     # Index the repository.
     repo_embedder = None
     if args.index_repo:
-        logging.info("Cloning the repository...")
-        repo_manager = GitHubRepoManager.from_args(args)
+        # Check the repo-mode
+        if(args.repo_mode == "local"):
+            logging.info("Indexing the local repository...")
+            repo_manager = GitHubRepoManager.from_args_localRepo(args)
+        else:
+            logging.info("Cloning the repository...")
+            repo_manager = GitHubRepoManager.from_args(args)
         logging.info("Embedding the repo...")
         chunker = UniversalFileChunker(max_tokens=args.tokens_per_chunk)
         repo_embedder = build_batch_embedder_from_flags(repo_manager, chunker, args)
