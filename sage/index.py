@@ -12,7 +12,7 @@ from sage.data_manager import GitHubRepoManager
 from sage.embedder import build_batch_embedder_from_flags
 from sage.github import GitHubIssuesChunker, GitHubIssuesManager
 from sage.vector_store import build_vector_store_from_args
-import pprint
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
