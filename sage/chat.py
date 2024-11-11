@@ -73,7 +73,6 @@ def main():
 
     validator = sage_config.add_all_args(parser)
     args = parser.parse_args()
-    print(args)
     validator(args)
 
     rag_chain = build_rag_chain(args)

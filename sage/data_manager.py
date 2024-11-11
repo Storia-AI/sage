@@ -96,6 +96,7 @@ class GitHubRepoManager(DataManager):
         """Clones the repository to the local directory, if it's not already cloned."""
         if os.path.exists(self.local_path):
             # The repository is already cloned.
+            logging.info("Repository already exists..")
             return True
 
         if not self.is_public and not self.access_token:
@@ -255,20 +256,4 @@ class GitHubRepoManager(DataManager):
             )
         return repo_manager
     
-    def from_args_localRepo(args: Dict):
-        """Creates a GitHubRepoManager from command-line arguments and clones the underlying repository."""
-        repo_manager = GitHubRepoManager(
-            repo_id=args.repo_id,
-            commit_hash=args.commit_hash,
-            access_token=os.getenv("GITHUB_TOKEN"),
-            local_dir=args.local_dir,
-            inclusion_file=args.include,
-            exclusion_file=args.exclude,
-        )
-        if not repo_manager.local_dir:
-            # Proceed if local_dir exists and is not empty
-            raise ValueError(
-                f"The given Directory is empty, please provide the correct local dir "
-            )
-       
-        return repo_manager
+    

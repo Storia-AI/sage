@@ -56,12 +56,8 @@ def main():
     repo_embedder = None
     if args.index_repo:
         # Check the repo-mode
-        if(args.repo_mode == "local"):
-            logging.info("Indexing the local repository...")
-            repo_manager = GitHubRepoManager.from_args_localRepo(args)
-        else:
-            logging.info("Cloning the repository...")
-            repo_manager = GitHubRepoManager.from_args(args)
+        logging.info("Cloning the repository...")
+        repo_manager = GitHubRepoManager.from_args(args)
         logging.info("Embedding the repo...")
         chunker = UniversalFileChunker(max_tokens=args.tokens_per_chunk)
         repo_embedder = build_batch_embedder_from_flags(repo_manager, chunker, args)
