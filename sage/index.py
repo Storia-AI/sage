@@ -32,14 +32,14 @@ def main():
     ]
 
     args = parser.parse_args()
-
+    
     for validator in arg_validators:
         validator(args)
 
     if args.llm_retriever:
         logging.warning("The LLM retriever does not require indexing, so this script is a no-op.")
         return
-
+    
     # Additionally validate embedder and vector store compatibility.
     vector_store_providers = [member.value for member in VectorStoreProvider]
     if args.embedding_provider == "openai" and args.vector_store_provider not in vector_store_providers:
@@ -48,14 +48,17 @@ def main():
         )
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
-
+    if args.repo_mode == "local" and args.local_dir == "repos":
+        parser.error("You must not store the local repo inside the repos folder")
+        
     ######################
     # Step 1: Embeddings #
     ######################
-
+    
     # Index the repository.
     repo_embedder = None
     if args.index_repo:
+        # Check the repo-mode
         logging.info("Cloning the repository...")
         repo_manager = GitHubRepoManager.from_args(args)
         logging.info("Embedding the repo...")

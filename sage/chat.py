@@ -19,7 +19,6 @@ from sage.retriever import build_retriever_from_args
 
 load_dotenv()
 
-
 def build_rag_chain(args):
     """Builds a RAG chain via LangChain."""
     llm = build_llm_via_langchain(args.llm_provider, args.llm_model)

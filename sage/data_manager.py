@@ -96,6 +96,7 @@ class GitHubRepoManager(DataManager):
         """Clones the repository to the local directory, if it's not already cloned."""
         if os.path.exists(self.local_path):
             # The repository is already cloned.
+            logging.info("Repository already exists..")
             return True
 
         if not self.is_public and not self.access_token:
@@ -254,3 +255,5 @@ class GitHubRepoManager(DataManager):
                 "For private repositories, please set the GITHUB_TOKEN variable in your environment."
             )
         return repo_manager
+    
+    

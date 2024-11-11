@@ -81,6 +81,12 @@ def add_repo_args(parser: ArgumentParser) -> Callable:
         default="repos",
         help="The local directory to store the repository",
     )
+    parser.add(
+        "--repo-mode",
+        default = "remote",
+        choices=["local", "remote"],
+        help="Define where is the repo present"
+    )
     return validate_repo_args
 
 
@@ -250,9 +256,12 @@ def add_all_args(parser: ArgumentParser) -> Callable:
 
 
 def validate_repo_args(args):
-    """Validates the configuration of the repository."""
-    if not re.match(r"^[^/]+/[^/]+$", args.repo_id):
-        raise ValueError("repo_id must be in the format 'owner/repo'")
+    """Validates the configuration of the repository.
+    For remote repositories, validates that repo_id is in 'owner/repo' format.
+    For local mode, accepts a single directory path.
+    """
+    if args.repo_mode != "local" and not re.match(r"^[^/]+/[^/]+$", args.repo_id):
+        raise ValueError("repo_id must be in the format 'owner/repo' for remote repositories")
 
 
 def _validate_openai_embedding_args(args):
