@@ -126,7 +126,7 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
         "--vector-store-provider", default="marqo", choices=["pinecone", "marqo", "chroma", "faiss", "milvus", "qdrant"]
     )
     parser.add(
-        "--index-name", default="sage_index", help="Index name for the Vector Store index. We default it to sage_index"
+        "--index-name", default="sage", help="Index name for the vector store index."
     )
     parser.add(
         "--milvus-uri",
