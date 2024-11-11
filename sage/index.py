@@ -5,10 +5,11 @@ import os
 import time
 
 import configargparse
+from dotenv import load_dotenv
 
 import sage.config as sage_config
 from sage.chunker import UniversalFileChunker
-from sage.data_manager import GitHubRepoManager
+from sage.data_manager import build_data_manager_from_args
 from sage.embedder import build_batch_embedder_from_flags
 from sage.github import GitHubIssuesChunker, GitHubIssuesManager
 from sage.vector_store import VectorStoreProvider, build_vector_store_from_args
@@ -16,6 +17,8 @@ from sage.vector_store import VectorStoreProvider, build_vector_store_from_args
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+load_dotenv()
 
 
 def main():
@@ -57,7 +60,7 @@ def main():
     repo_embedder = None
     if args.index_repo:
         logging.info("Cloning the repository...")
-        repo_manager = GitHubRepoManager.from_args(args)
+        repo_manager = build_data_manager_from_args(args)
         logging.info("Embedding the repo...")
         chunker = UniversalFileChunker(max_tokens=args.tokens_per_chunk)
         repo_embedder = build_batch_embedder_from_flags(repo_manager, chunker, args)

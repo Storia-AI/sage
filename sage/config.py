@@ -81,6 +81,8 @@ def add_repo_args(parser: ArgumentParser) -> Callable:
         default="repos",
         help="The local directory to store the repository",
     )
+    parser.add("--git-provider", default="github", choices=["github", "gitlab"])
+    parser.add("--base-url", default=None, help="The base URL for the Git provider. This is only needed for GitLab.")
     return validate_repo_args
 
 

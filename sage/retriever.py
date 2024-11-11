@@ -15,7 +15,7 @@ from langchain_voyageai import VoyageAIEmbeddings
 from pydantic import Field
 
 from sage.code_symbols import get_code_symbols
-from sage.data_manager import DataManager, GitHubRepoManager
+from sage.data_manager import DataManager, build_data_manager_from_args
 from sage.llm import build_llm_via_langchain
 from sage.reranker import build_reranker
 from sage.vector_store import build_vector_store_from_args
@@ -38,14 +38,14 @@ class LLMRetriever(BaseRetriever):
     caching to make it usable.
     """
 
-    repo_manager: GitHubRepoManager = Field(...)
+    repo_manager: DataManager = Field(...)
     top_k: int = Field(...)
 
     cached_repo_metadata: List[Dict] = Field(...)
     cached_repo_files: List[str] = Field(...)
     cached_repo_hierarchy: str = Field(...)
 
-    def __init__(self, repo_manager: GitHubRepoManager, top_k: int):
+    def __init__(self, repo_manager: DataManager, top_k: int):
         super().__init__()
         self.repo_manager = repo_manager
         self.top_k = top_k
@@ -326,7 +326,7 @@ class RerankerWithErrorHandling(BaseRetriever):
 def build_retriever_from_args(args, data_manager: Optional[DataManager] = None):
     """Builds a retriever (with optional reranking) from command-line arguments."""
     if args.llm_retriever:
-        retriever = LLMRetriever(GitHubRepoManager.from_args(args), top_k=args.retriever_top_k)
+        retriever = LLMRetriever(build_data_manager_from_args(args), top_k=args.retriever_top_k)
     else:
         if args.embedding_provider == "openai":
             embeddings = OpenAIEmbeddings(model=args.embedding_model)
