@@ -122,12 +122,16 @@ def add_embedding_args(parser: ArgumentParser) -> Callable:
 
 def add_vector_store_args(parser: ArgumentParser) -> Callable:
     """Adds vector store-related arguments to the parser and returns a validator."""
-    parser.add("--vector-store-provider", default="marqo", choices=["pinecone", "marqo"])
     parser.add(
-        "--pinecone-index-name",
-        default=None,
-        help="Pinecone index name. Required if using Pinecone as the vector store. If the index doesn't exist already, "
-        "we will create it.",
+        "--vector-store-provider", default="marqo", choices=["pinecone", "marqo", "chroma", "faiss", "milvus", "qdrant"]
+    )
+    parser.add(
+        "--index-name", default="sage_index", help="Index name for the Vector Store index. We default it to sage_index"
+    )
+    parser.add(
+        "--milvus-uri",
+        default="milvus_sage.db",
+        help="URI for milvus. We default it to milvus_sage.db",
     )
     parser.add(
         "--index-namespace",
@@ -402,8 +406,8 @@ def validate_vector_store_args(args):
     elif args.vector_store_provider == "pinecone":
         if not os.getenv("PINECONE_API_KEY"):
             raise ValueError("Please set the PINECONE_API_KEY environment variable.")
-        if not args.pinecone_index_name:
-            raise ValueError(f"Please set the vector_store.pinecone_index_name value.")
+        if not args.index_name:
+            raise ValueError(f"Please set the vector_store.index_name value.")
 
 
 def validate_indexing_args(args):

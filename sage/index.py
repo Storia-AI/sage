@@ -11,7 +11,7 @@ from sage.chunker import UniversalFileChunker
 from sage.data_manager import GitHubRepoManager
 from sage.embedder import build_batch_embedder_from_flags
 from sage.github import GitHubIssuesChunker, GitHubIssuesManager
-from sage.vector_store import build_vector_store_from_args
+from sage.vector_store import VectorStoreProvider, build_vector_store_from_args
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -41,8 +41,11 @@ def main():
         return
 
     # Additionally validate embedder and vector store compatibility.
-    if args.embedding_provider == "openai" and args.vector_store_provider != "pinecone":
-        parser.error("When using OpenAI embedder, the vector store type must be Pinecone.")
+    vector_store_providers = [member.value for member in VectorStoreProvider]
+    if args.embedding_provider == "openai" and args.vector_store_provider not in vector_store_providers:
+        parser.error(
+            f"When using OpenAI embedder, the vector store type must be from the list {vector_store_providers}."
+        )
     if args.embedding_provider == "marqo" and args.vector_store_provider != "marqo":
         parser.error("When using the marqo embedder, the vector store type must also be marqo.")
 
