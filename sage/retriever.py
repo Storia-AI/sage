@@ -91,22 +91,26 @@ class LLMRetriever(BaseRetriever):
             render = LLMRetriever._render_file_hierarchy(self.repo_metadata, include_classes=True, include_methods=True)
             max_tokens = CLAUDE_MODEL_CONTEXT_SIZE - 50_000  # 50,000 tokens for other parts of the prompt.
             client = anthropic.Anthropic()
-            if client.count_tokens(render) > max_tokens:
+
+            def count_tokens(x):
+                count = client.beta.messages.count_tokens(model=CLAUDE_MODEL, messages=[{"role": "user", "content": x}])
+                return count.input_tokens
+
+            if count_tokens(render) > max_tokens:
                 logging.info("File hierarchy is too large; excluding methods.")
                 render = LLMRetriever._render_file_hierarchy(
                     self.repo_metadata, include_classes=True, include_methods=False
                 )
-                if client.count_tokens(render) > max_tokens:
+                if count_tokens(render) > max_tokens:
                     logging.info("File hierarchy is still too large; excluding classes.")
                     render = LLMRetriever._render_file_hierarchy(
                         self.repo_metadata, include_classes=False, include_methods=False
                     )
-                    if client.count_tokens(render) > max_tokens:
+                    if count_tokens(render) > max_tokens:
                         logging.info("File hierarchy is still too large; truncating.")
                         tokenizer = anthropic.Tokenizer()
                         tokens = tokenizer.tokenize(render)[:max_tokens]
                         render = tokenizer.detokenize(tokens)
-            logging.info("Number of tokens in render hierarchy: %d", client.count_tokens(render))
             self.cached_repo_hierarchy = render
         return self.cached_repo_hierarchy
 

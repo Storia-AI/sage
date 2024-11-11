@@ -163,7 +163,7 @@ def add_vector_store_args(parser: ArgumentParser) -> Callable:
     parser.add(
         "--llm-retriever",
         action=argparse.BooleanOptionalAction,
-        default=False,
+        default=True,
         help="When set to True, we use an LLM for retrieval: we pass the repository file hierarchy together with the "
         "user query and ask the LLM to choose relevant files solely based on their paths. No indexing will be done, so "
         "all the vector store / embedding arguments will be ignored.",
@@ -358,6 +358,9 @@ def _validate_gemini_embedding_args(args):
 
 def validate_embedding_args(args):
     """Validates the configuration of the batch embedder and sets defaults."""
+    if args.llm_retriever:
+        # When using an LLM to retrieve, we are not running the embedder.
+        return True
     if args.embedding_provider == "openai":
         _validate_openai_embedding_args(args)
     elif args.embedding_provider == "voyage":
