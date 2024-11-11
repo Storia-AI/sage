@@ -7,12 +7,13 @@ import time
 from abc import ABC, abstractmethod
 from collections import Counter
 from typing import Dict, Generator, List, Optional, Tuple
-from tqdm import tqdm
+
 import google.generativeai as genai
 import marqo
 import requests
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_random_exponential
+from tqdm import tqdm
 
 from sage.chunker import Chunk, Chunker
 from sage.constants import TEXT_FIELD
@@ -53,14 +54,14 @@ class OpenAIBatchEmbedder(BatchEmbedder):
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None) -> str:
         """Issues batch embedding jobs for the entire dataset. Returns the filename containing the job IDs."""
         num_files = len([x for x in self.data_manager.walk(get_content=False)])
-            
+
         batch = []
         batch_ids = {}  # job_id -> metadata
         chunk_count = 0
         dataset_name = self.data_manager.dataset_id.replace("/", "_")
 
         pbar = tqdm(total=num_files, desc="Processing chunks", unit="chunk")
-        
+
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
@@ -81,7 +82,7 @@ class OpenAIBatchEmbedder(BatchEmbedder):
         if batch:
             openai_batch_id = self._issue_job_for_chunks(batch, batch_id=f"{dataset_name}/{len(batch_ids)}")
             batch_ids[openai_batch_id] = [chunk.metadata for chunk in batch]
-            
+
         logging.info("Issued %d jobs for %d chunks.", len(batch_ids), chunk_count)
 
         timestamp = int(time.time())
@@ -227,16 +228,16 @@ class VoyageBatchEmbedder(BatchEmbedder):
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire dataset."""
         num_files = len([x for x in self.data_manager.walk(get_content=False)])
-            
+
         batch = []
         chunk_count = 0
 
         pbar = tqdm(total=num_files, desc="Processing chunks", unit="chunk")
-        
+
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
-            batch.extend(chunks)    
+            batch.extend(chunks)
             pbar.update(1)
 
             token_count = chunk_count * self.chunker.max_tokens
@@ -317,7 +318,7 @@ class MarqoEmbedder(BatchEmbedder):
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
-            pbar.update(1)  
+            pbar.update(1)
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
                     sub_batch = batch[i : i + chunks_per_batch]
@@ -379,7 +380,7 @@ class GeminiBatchEmbedder(BatchEmbedder):
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
             batch.extend(chunks)
-            pbar.update(1) 
+            pbar.update(1)
 
             if len(batch) > chunks_per_batch:
                 for i in range(0, len(batch), chunks_per_batch):
