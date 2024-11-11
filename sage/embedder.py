@@ -53,14 +53,13 @@ class OpenAIBatchEmbedder(BatchEmbedder):
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None) -> str:
         """Issues batch embedding jobs for the entire dataset. Returns the filename containing the job IDs."""
-        num_files = len([x for x in self.data_manager.walk(get_content=False)])
-
         batch = []
         batch_ids = {}  # job_id -> metadata
         chunk_count = 0
         dataset_name = self.data_manager.dataset_id.replace("/", "_")
 
-        pbar = tqdm(total=num_files, desc="Processing chunks", unit="chunk")
+        num_files = len([x for x in self.data_manager.walk(get_content=False)])
+        pbar = tqdm(total=num_files, desc="Processing files", unit="file")
 
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
@@ -227,12 +226,11 @@ class VoyageBatchEmbedder(BatchEmbedder):
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire dataset."""
-        num_files = len([x for x in self.data_manager.walk(get_content=False)])
-
         batch = []
         chunk_count = 0
 
-        pbar = tqdm(total=num_files, desc="Processing chunks", unit="chunk")
+        num_files = len([x for x in self.data_manager.walk(get_content=False)])
+        pbar = tqdm(total=num_files, desc="Processing files", unit="file")
 
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
@@ -308,11 +306,12 @@ class MarqoEmbedder(BatchEmbedder):
         if chunks_per_batch > 64:
             raise ValueError("Marqo enforces a limit of 64 chunks per batch.")
 
-        num_files = len([x for x in self.data_manager.walk(get_content=False)])
         chunk_count = 0
         batch = []
         job_count = 0
-        pbar = tqdm(total=num_files, desc="Processing chunks", unit="file")
+
+        num_files = len([x for x in self.data_manager.walk(get_content=False)])
+        pbar = tqdm(total=num_files, desc="Processing files", unit="file")
 
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
@@ -369,13 +368,15 @@ class GeminiBatchEmbedder(BatchEmbedder):
 
     def embed_dataset(self, chunks_per_batch: int, max_embedding_jobs: int = None):
         """Issues batch embedding jobs for the entire dataset."""
-        num_files = len([x for x in self.data_manager.walk(get_content=False)])
         batch = []
         chunk_count = 0
 
         request_count = 0
         last_request_time = time.time()
-        pbar = tqdm(total=num_files, desc="Processing chunks", unit="file")
+
+        num_files = len([x for x in self.data_manager.walk(get_content=False)])
+        pbar = tqdm(total=num_files, desc="Processing files", unit="file")
+
         for content, metadata in self.data_manager.walk():
             chunks = self.chunker.chunk(content, metadata)
             chunk_count += len(chunks)
